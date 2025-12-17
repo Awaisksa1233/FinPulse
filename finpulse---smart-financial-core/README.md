@@ -19,6 +19,17 @@
 
 ---
 
+## 🌐 Live Demo
+
+> **Try FinPulse now without any setup!**
+
+| Platform | Link |
+|----------|------|
+| 🖥️ **Web App** | [awaisAI.pythonanywhere.com](https://awaisAI.pythonanywhere.com) |
+| 🤖 **Telegram Bot** | [@Awaisexpensebot](https://t.me/Awaisexpensebot) |
+
+---
+
 ## ✨ Features
 
 ### 📊 **Dashboard & Analytics**
