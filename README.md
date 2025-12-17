@@ -1,7 +1,7 @@
 # 💰 FinPulse - Smart Financial Core
 
 <p align="center">
-  <img src="main/static/icons/icon-512.png" alt="FinPulse Logo" width="120" height="120">
+  <img src="finpulse---smart-financial-core/static/icons/icon-512.png" alt="FinPulse Logo" width="120" height="120">
 </p>
 
 <p align="center">
