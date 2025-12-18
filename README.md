@@ -1,7 +1,7 @@
 # 💰 FinPulse - Smart Financial Core
 
 <p align="center">
-  <img src="finpulse---smart-financial-core/static/icons/icon-512.png" alt="FinPulse Logo" width="120" height="120">
+  <img src="static/icons/icon-512.png" alt="FinPulse Logo" width="120" height="120">
 </p>
 
 <p align="center">
@@ -48,6 +48,7 @@
 - Support for recurring transactions
 - Natural language transaction input via AI
 - Edit and delete transactions with automatic balance updates
+- **Pagination** for large transaction lists (15 per page)
 
 ### 💸 **Loan Management**
 - Track money you've lent (receivables) and borrowed (payables)
@@ -60,6 +61,7 @@
 - **Smart Summaries**: Get AI-generated insights about your finances
 - **Story Mode Reports**: Transform your financial data into engaging narratives
 - **Chat Interface**: Ask questions about your finances
+- **AI Budget Suggestions**: Get personalized budget recommendations based on spending patterns
 
 ### 📱 **Mobile & PWA**
 - Progressive Web App (PWA) support
