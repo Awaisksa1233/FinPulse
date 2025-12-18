@@ -1,0 +1,455 @@
+{% extends "base.html" %}
+{% block title %}Budget Goals{% endblock %}
+
+{% block content %}
+<header class="page-header"
+    style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+    <div>
+        <h2 class="page-title">Budget Goals</h2>
+        <p class="page-subtitle">Set spending limits and track your progress.</p>
+    </div>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button onclick="getAISuggestions()" class="btn btn-outline"
+            style="border-color: var(--primary); color: var(--primary);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
+                <path d="M5 19l1 3 1-3 3-1-3-1-1-3-1 3-3 1 3 1z" />
+            </svg>
+            AI Suggestions
+        </button>
+        <button onclick="openAddModal()" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Add Budget
+        </button>
+    </div>
+</header>
+
+{% if budgets %}
+<!-- Budget Cards Grid -->
+<div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px;">
+    {% for budget in budgets %}
+    <div class="card budget-card {{ 'budget-inactive' if not budget.is_active else '' }}"
+        style="position: relative; overflow: hidden;">
+        <!-- Status Badge -->
+        {% if budget.status == 'exceeded' %}
+        <div class="budget-badge danger">Exceeded</div>
+        {% elif budget.status == 'warning' %}
+        <div class="budget-badge warning">Warning</div>
+        {% endif %}
+
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+            <div>
+                <h3 style="font-size: 18px; font-weight: 600; color: var(--gray-800); margin-bottom: 4px;">
+                    {{ budget.category }}
+                </h3>
+                <p style="font-size: 13px; color: var(--gray-500);">
+                    {% if not budget.is_active %}
+                    <span style="color: var(--gray-400);">🔇 Paused</span>
+                    {% else %}
+                    Alert at {{ budget.alert_threshold|int }}%
+                    {% endif %}
+                </p>
+            </div>
+            <div class="dropdown" style="position: relative;">
+                <button class="btn btn-outline" style="padding: 6px;" onclick="toggleDropdown(this)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="1" />
+                        <circle cx="12" cy="5" r="1" />
+                        <circle cx="12" cy="19" r="1" />
+                    </svg>
+                </button>
+                <div class="dropdown-menu"
+                    style="display: none; position: absolute; right: 0; top: 100%; background: white; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.15); z-index: 10; min-width: 140px;">
+                    <button
+                        onclick="openEditModal({{ budget.id }}, '{{ budget.category }}', {{ budget.limit }}, {{ budget.alert_threshold }})"
+                        class="dropdown-item">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                        Edit
+                    </button>
+                    <form method="POST" action="{{ url_for('toggle_budget', budget_id=budget.id) }}" style="margin: 0;">
+                        <button type="submit" class="dropdown-item">
+                            {% if budget.is_active %}
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+                                <line x1="12" y1="2" x2="12" y2="12" />
+                            </svg>
+                            Disable
+                            {% else %}
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                                <polyline points="22 4 12 14.01 9 11.01" />
+                            </svg>
+                            Enable
+                            {% endif %}
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('delete_budget', budget_id=budget.id) }}" style="margin: 0;"
+                        onsubmit="return confirm('Delete this budget?');">
+                        <button type="submit" class="dropdown-item" style="color: var(--danger);">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path
+                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            </svg>
+                            Delete
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="budget-progress-container">
+            <div class="budget-progress-bar {{ budget.status }}" style="width: {{ budget.progress_pct }}%;"></div>
+        </div>
+
+        <!-- Stats -->
+        <div style="display: flex; justify-content: space-between; margin-top: 12px;">
+            <div>
+                <p style="font-size: 12px; color: var(--gray-500);">Spent</p>
+                <p style="font-size: 16px; font-weight: 600; color: var(--gray-800);">{{ "%.2f"|format(budget.spent) }}
+                    SAR</p>
+            </div>
+            <div style="text-align: center;">
+                <p style="font-size: 12px; color: var(--gray-500);">Limit</p>
+                <p style="font-size: 16px; font-weight: 600; color: var(--gray-600);">{{ "%.2f"|format(budget.limit) }}
+                    SAR</p>
+            </div>
+            <div style="text-align: right;">
+                <p style="font-size: 12px; color: var(--gray-500);">Remaining</p>
+                <p
+                    style="font-size: 16px; font-weight: 600; color: {{ 'var(--danger)' if budget.remaining < 0 else 'var(--success)' }};">
+                    {{ "%.2f"|format(budget.remaining) }} SAR
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <div class="empty-state" style="padding: 48px;">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"
+            style="margin-bottom: 16px; opacity: 0.4;">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M16 8l-8 8" />
+            <circle cx="9" cy="9" r="1" fill="currentColor" />
+            <circle cx="15" cy="15" r="1" fill="currentColor" />
+        </svg>
+        <h3 style="margin-bottom: 8px; color: var(--gray-700);">No Budgets Yet</h3>
+        <p style="color: var(--gray-500); margin-bottom: 16px;">Set spending limits for your expense categories to stay
+            on track.</p>
+        <button onclick="openAddModal()" class="btn btn-primary">Create Your First Budget</button>
+    </div>
+</div>
+{% endif %}
+
+<!-- Add Budget Modal -->
+<div id="addModal" class="modal-backdrop" style="display: none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">Add Budget</h3>
+            <button class="modal-close" onclick="closeAddModal()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+            </button>
+        </div>
+        <form method="POST" action="{{ url_for('add_budget') }}">
+            <div class="form-group">
+                <label class="form-label">Category</label>
+                <input type="text" name="category" list="categoryList" required class="form-control"
+                    placeholder="e.g., Food, Transport">
+                <datalist id="categoryList">
+                    {% for cat in categories %}
+                    <option value="{{ cat }}">
+                        {% endfor %}
+                </datalist>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Monthly Limit (SAR)</label>
+                <input type="number" name="monthly_limit" step="0.01" min="1" required class="form-control"
+                    placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Alert Threshold (%)</label>
+                <input type="number" name="alert_threshold" min="50" max="100" value="80" required class="form-control">
+                <p style="font-size: 12px; color: var(--gray-500); margin-top: 4px;">Get warned when spending reaches
+                    this percentage.</p>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Create Budget</button>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Budget Modal -->
+<div id="editModal" class="modal-backdrop" style="display: none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">Edit Budget</h3>
+            <button class="modal-close" onclick="closeEditModal()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+            </button>
+        </div>
+        <form method="POST" action="{{ url_for('edit_budget') }}">
+            <input type="hidden" name="budget_id" id="editBudgetId">
+            <div class="form-group">
+                <label class="form-label">Category</label>
+                <input type="text" id="editCategory" class="form-control" readonly style="background: var(--gray-100);">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Monthly Limit (SAR)</label>
+                <input type="number" name="monthly_limit" id="editLimit" step="0.01" min="1" required
+                    class="form-control">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Alert Threshold (%)</label>
+                <input type="number" name="alert_threshold" id="editThreshold" min="50" max="100" required
+                    class="form-control">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Save Changes</button>
+        </form>
+    </div>
+</div>
+
+<!-- AI Suggestions Modal -->
+<div id="aiModal" class="modal-backdrop" style="display: none;">
+    <div class="modal" style="max-width: 520px;">
+        <div class="modal-header">
+            <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2">
+                    <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
+                    <path d="M5 19l1 3 1-3 3-1-3-1-1-3-1 3-3 1 3 1z" />
+                </svg>
+                AI Budget Suggestions
+            </h3>
+            <button class="modal-close" onclick="closeAIModal()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+            </button>
+        </div>
+        <div id="aiContent" style="padding: 0 20px 20px;">
+            <!-- Content will be loaded dynamically -->
+        </div>
+    </div>
+</div>
+
+<style>
+    .ai-skeleton {
+        background: linear-gradient(90deg, var(--gray-200) 25%, var(--gray-100) 50%, var(--gray-200) 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+        border-radius: 8px;
+    }
+
+    @keyframes shimmer {
+        0% {
+            background-position: 200% 0;
+        }
+
+        100% {
+            background-position: -200% 0;
+        }
+    }
+
+    .suggestion-card {
+        background: var(--gray-50);
+        border: 1px solid var(--gray-200);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        transition: all 0.2s;
+    }
+
+    .suggestion-card:hover {
+        border-color: var(--primary);
+        box-shadow: 0 2px 8px rgba(99, 102, 241, 0.1);
+    }
+
+    .suggestion-card.applied {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+
+    .ai-summary {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+        border-radius: 10px;
+        padding: 14px;
+        margin-bottom: 16px;
+        font-size: 14px;
+        color: var(--gray-700);
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function openAddModal() {
+        document.getElementById('addModal').style.display = 'flex';
+    }
+
+    function closeAddModal() {
+        document.getElementById('addModal').style.display = 'none';
+    }
+
+    function openEditModal(id, category, limit, threshold) {
+        document.getElementById('editBudgetId').value = id;
+        document.getElementById('editCategory').value = category;
+        document.getElementById('editLimit').value = limit;
+        document.getElementById('editThreshold').value = threshold;
+        document.getElementById('editModal').style.display = 'flex';
+        // Close any open dropdowns
+        document.querySelectorAll('.dropdown-menu').forEach(m => m.style.display = 'none');
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModal').style.display = 'none';
+    }
+
+    function closeAIModal() {
+        document.getElementById('aiModal').style.display = 'none';
+    }
+
+    function getAISuggestions() {
+        const modal = document.getElementById('aiModal');
+        const content = document.getElementById('aiContent');
+
+        // Show modal with loading skeleton
+        modal.style.display = 'flex';
+        content.innerHTML = `
+            <div class="ai-summary ai-skeleton" style="height: 60px;"></div>
+            <div class="ai-skeleton" style="height: 80px; margin-bottom: 12px;"></div>
+            <div class="ai-skeleton" style="height: 80px; margin-bottom: 12px;"></div>
+            <div class="ai-skeleton" style="height: 80px;"></div>
+        `;
+
+        // Fetch AI suggestions
+        fetch('/api/budgets/suggestions')
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) {
+                    content.innerHTML = `
+                        <div style="text-align: center; padding: 30px; color: var(--gray-500);">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 12px; opacity: 0.5;">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="12" y1="8" x2="12" y2="12"/>
+                                <line x1="12" y1="16" x2="12.01" y2="16"/>
+                            </svg>
+                            <p>${data.error || 'Unable to generate suggestions'}</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = `<div class="ai-summary">💡 ${data.summary}</div>`;
+
+                if (data.suggestions.length === 0) {
+                    html += `
+                        <div style="text-align: center; padding: 20px; color: var(--gray-500);">
+                            <p>No new budget suggestions available.</p>
+                        </div>
+                    `;
+                } else {
+                    data.suggestions.forEach((s, i) => {
+                        html += `
+                            <div class="suggestion-card" id="suggestion-${i}">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                    <div style="flex: 1;">
+                                        <h4 style="font-size: 16px; font-weight: 600; color: var(--gray-800); margin-bottom: 4px;">${s.category}</h4>
+                                        <p style="font-size: 13px; color: var(--gray-500); margin-bottom: 8px;">${s.reasoning}</p>
+                                        <p style="font-size: 18px; font-weight: 600; color: var(--primary);">${s.recommended_limit.toLocaleString()} SAR/month</p>
+                                    </div>
+                                    <button onclick="applySuggestion('${s.category}', ${s.recommended_limit}, ${i})" 
+                                            class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;">
+                                        Apply
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+
+                content.innerHTML = html;
+            })
+            .catch(err => {
+                content.innerHTML = `
+                    <div style="text-align: center; padding: 30px; color: var(--danger);">
+                        <p>Failed to fetch suggestions. Please try again.</p>
+                    </div>
+                `;
+            });
+    }
+
+    function applySuggestion(category, limit, index) {
+        // Create a form and submit it
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ url_for("add_budget") }}';
+
+        const catInput = document.createElement('input');
+        catInput.type = 'hidden';
+        catInput.name = 'category';
+        catInput.value = category;
+        form.appendChild(catInput);
+
+        const limitInput = document.createElement('input');
+        limitInput.type = 'hidden';
+        limitInput.name = 'monthly_limit';
+        limitInput.value = limit;
+        form.appendChild(limitInput);
+
+        const thresholdInput = document.createElement('input');
+        thresholdInput.type = 'hidden';
+        thresholdInput.name = 'alert_threshold';
+        thresholdInput.value = 80;
+        form.appendChild(thresholdInput);
+
+        document.body.appendChild(form);
+        form.submit();
+    }
+
+    function toggleDropdown(btn) {
+        const menu = btn.nextElementSibling;
+        const isOpen = menu.style.display === 'block';
+        // Close all dropdowns first
+        document.querySelectorAll('.dropdown-menu').forEach(m => m.style.display = 'none');
+        if (!isOpen) {
+            menu.style.display = 'block';
+        }
+    }
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.dropdown')) {
+            document.querySelectorAll('.dropdown-menu').forEach(m => m.style.display = 'none');
+        }
+    });
+
+    // Close modals when clicking backdrop
+    document.getElementById('addModal').addEventListener('click', (e) => {
+        if (e.target.id === 'addModal') closeAddModal();
+    });
+    document.getElementById('editModal').addEventListener('click', (e) => {
+        if (e.target.id === 'editModal') closeEditModal();
+    });
+    document.getElementById('aiModal').addEventListener('click', (e) => {
+        if (e.target.id === 'aiModal') closeAIModal();
+    });
+</script>
+{% endblock %}

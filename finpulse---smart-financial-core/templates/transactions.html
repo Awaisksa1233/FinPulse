@@ -151,6 +151,46 @@
             </div>
             {% endfor %}
         </div>
+
+        <!-- Pagination -->
+        {% if pagination and pagination.pages > 1 %}
+        <div class="pagination"
+            style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 20px; flex-wrap: wrap;">
+            {% if pagination.has_prev %}
+            <a href="{{ url_for(active_page, page=pagination.prev_num) }}" class="btn btn-outline"
+                style="padding: 8px 12px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="15 18 9 12 15 6" />
+                </svg>
+            </a>
+            {% endif %}
+
+            {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+            {% if p %}
+            {% if p == pagination.page %}
+            <span class="btn btn-primary" style="padding: 8px 14px; cursor: default;">{{ p }}</span>
+            {% else %}
+            <a href="{{ url_for(active_page, page=p) }}" class="btn btn-outline" style="padding: 8px 14px;">{{ p }}</a>
+            {% endif %}
+            {% else %}
+            <span style="color: var(--gray-400);">...</span>
+            {% endif %}
+            {% endfor %}
+
+            {% if pagination.has_next %}
+            <a href="{{ url_for(active_page, page=pagination.next_num) }}" class="btn btn-outline"
+                style="padding: 8px 12px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="9 18 15 12 9 6" />
+                </svg>
+            </a>
+            {% endif %}
+        </div>
+        <p style="text-align: center; font-size: 12px; color: var(--gray-500); margin-top: 8px;">
+            Showing {{ ((pagination.page - 1) * pagination.per_page) + 1 }}-{{ [pagination.page * pagination.per_page,
+            pagination.total]|min }} of {{ pagination.total }}
+        </p>
+        {% endif %}
     </div>
 </div>
 

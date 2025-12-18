@@ -190,6 +190,14 @@ def logout():
 @app.route('/')
 @login_required
 def dashboard():
+    from models import Budget, RecurringTemplate
+    from services.recurring_service import process_recurring_transactions
+    
+    # Process any pending recurring transactions
+    recurring_result = process_recurring_transactions(db, current_user.id)
+    if recurring_result['generated_count'] > 0:
+        flash(f"Auto-generated {recurring_result['generated_count']} recurring transaction(s).", 'success')
+    
     accounts = Account.query.filter_by(user_id=current_user.id).all()
     total_balance = sum(a.balance for a in accounts)
     
@@ -201,13 +209,47 @@ def dashboard():
     income_this_month = sum(t.amount for t in transactions if t.type == 'income')
     expense_this_month = sum(t.amount for t in transactions if t.type == 'expense')
     
-    # Expense by category
+    # Expense by category (for this month)
     expense_by_category = {}
-    for t in Transaction.query.filter_by(user_id=current_user.id, type='expense').all():
-        expense_by_category[t.category] = expense_by_category.get(t.category, 0) + t.amount
+    for t in transactions:
+        if t.type == 'expense':
+            expense_by_category[t.category] = expense_by_category.get(t.category, 0) + t.amount
+    
+    # Budget progress
+    budgets = Budget.query.filter_by(user_id=current_user.id, is_active=True).all()
+    budget_progress = []
+    budget_alerts = []
+    
+    for budget in budgets:
+        spent = expense_by_category.get(budget.category, 0)
+        progress_pct = (spent / budget.monthly_limit * 100) if budget.monthly_limit > 0 else 0
+        remaining = budget.monthly_limit - spent
+        
+        status = 'safe'  # green
+        if progress_pct >= 100:
+            status = 'exceeded'  # red
+            budget_alerts.append(f"⚠️ {budget.category} budget exceeded! ({progress_pct:.0f}%)")
+        elif progress_pct >= budget.alert_threshold * 100:
+            status = 'warning'  # yellow
+            budget_alerts.append(f"⚡ {budget.category} approaching limit ({progress_pct:.0f}%)")
+        
+        budget_progress.append({
+            'category': budget.category,
+            'limit': budget.monthly_limit,
+            'spent': spent,
+            'remaining': remaining,
+            'progress_pct': min(progress_pct, 100),  # Cap at 100 for display
+            'status': status
+        })
     
     # Recent transactions
     recent_transactions = Transaction.query.filter_by(user_id=current_user.id).order_by(Transaction.date.desc()).limit(5).all()
+    
+    # Upcoming recurring
+    upcoming_recurring = RecurringTemplate.query.filter_by(
+        user_id=current_user.id, 
+        is_paused=False
+    ).order_by(RecurringTemplate.next_due).limit(3).all()
     
     return render_template('dashboard.html',
         active_page='dashboard',
@@ -216,7 +258,10 @@ def dashboard():
         income_this_month=income_this_month,
         expense_this_month=expense_this_month,
         expense_by_category=expense_by_category,
-        recent_transactions=recent_transactions
+        recent_transactions=recent_transactions,
+        budget_progress=budget_progress,
+        budget_alerts=budget_alerts,
+        upcoming_recurring=upcoming_recurring
     )
 
 
@@ -653,13 +698,16 @@ def reports():
 @app.route('/income')
 @login_required
 def income():
+    page = request.args.get('page', 1, type=int)
+    per_page = 15
     accounts = Account.query.filter_by(user_id=current_user.id).all()
-    transactions = Transaction.query.filter_by(user_id=current_user.id, type='income').order_by(Transaction.date.desc()).limit(10).all()
+    pagination = Transaction.query.filter_by(user_id=current_user.id, type='income').order_by(Transaction.date.desc()).paginate(page=page, per_page=per_page, error_out=False)
     return render_template('transactions.html',
         active_page='income',
         transaction_type='income',
         accounts=accounts,
-        transactions=transactions,
+        transactions=pagination.items,
+        pagination=pagination,
         today=date.today().isoformat()
     )
 
@@ -668,13 +716,16 @@ def income():
 @app.route('/expenses')
 @login_required
 def expenses():
+    page = request.args.get('page', 1, type=int)
+    per_page = 15
     accounts = Account.query.filter_by(user_id=current_user.id).all()
-    transactions = Transaction.query.filter_by(user_id=current_user.id, type='expense').order_by(Transaction.date.desc()).limit(10).all()
+    pagination = Transaction.query.filter_by(user_id=current_user.id, type='expense').order_by(Transaction.date.desc()).paginate(page=page, per_page=per_page, error_out=False)
     return render_template('transactions.html',
         active_page='expenses',
         transaction_type='expense',
         accounts=accounts,
-        transactions=transactions,
+        transactions=pagination.items,
+        pagination=pagination,
         today=date.today().isoformat()
     )
 
@@ -894,6 +945,287 @@ def transfer():
         flash(f'Transferred ${amount:.2f} successfully!', 'success')
     
     return redirect(url_for('accounts'))
+
+
+# ============ BUDGETS ============
+@app.route('/budgets')
+@login_required
+def budgets():
+    from models import Budget
+    
+    today = date.today()
+    month_start = date(today.year, today.month, 1)
+    
+    # Get all budgets for this user
+    user_budgets = Budget.query.filter_by(user_id=current_user.id).all()
+    
+    # Calculate spending per category this month
+    transactions = Transaction.query.filter(
+        Transaction.user_id == current_user.id,
+        Transaction.date >= month_start,
+        Transaction.type == 'expense'
+    ).all()
+    
+    expense_by_category = {}
+    for t in transactions:
+        expense_by_category[t.category] = expense_by_category.get(t.category, 0) + t.amount
+    
+    # Build budget list with progress
+    budget_list = []
+    for budget in user_budgets:
+        spent = expense_by_category.get(budget.category, 0)
+        progress_pct = (spent / budget.monthly_limit * 100) if budget.monthly_limit > 0 else 0
+        remaining = budget.monthly_limit - spent
+        
+        status = 'safe'
+        if progress_pct >= 100:
+            status = 'exceeded'
+        elif progress_pct >= budget.alert_threshold * 100:
+            status = 'warning'
+        
+        budget_list.append({
+            'id': budget.id,
+            'category': budget.category,
+            'limit': budget.monthly_limit,
+            'spent': spent,
+            'remaining': remaining,
+            'progress_pct': min(progress_pct, 100),
+            'alert_threshold': budget.alert_threshold * 100,
+            'is_active': budget.is_active,
+            'status': status
+        })
+    
+    # Get categories from recent transactions for suggestions
+    all_categories = set()
+    recent_expenses = Transaction.query.filter_by(user_id=current_user.id, type='expense').all()
+    for t in recent_expenses:
+        all_categories.add(t.category)
+    
+    return render_template('budgets.html',
+        active_page='budgets',
+        budgets=budget_list,
+        categories=sorted(all_categories)
+    )
+
+
+@app.route('/budget/add', methods=['POST'])
+@login_required
+def add_budget():
+    from models import Budget
+    
+    category = request.form.get('category', '').strip()
+    monthly_limit = float(request.form.get('monthly_limit', 0))
+    alert_threshold = float(request.form.get('alert_threshold', 80)) / 100
+    
+    if not category or monthly_limit <= 0:
+        flash('Please provide a category and valid limit.', 'error')
+        return redirect(url_for('budgets'))
+    
+    # Check if budget for this category already exists
+    existing = Budget.query.filter_by(user_id=current_user.id, category=category).first()
+    if existing:
+        flash(f'Budget for {category} already exists. Edit it instead.', 'error')
+        return redirect(url_for('budgets'))
+    
+    budget = Budget(
+        user_id=current_user.id,
+        category=category,
+        monthly_limit=monthly_limit,
+        alert_threshold=alert_threshold
+    )
+    db.session.add(budget)
+    db.session.commit()
+    
+    flash(f'Budget for {category} created: {monthly_limit:.2f} SAR/month', 'success')
+    return redirect(url_for('budgets'))
+
+
+@app.route('/budget/edit', methods=['POST'])
+@login_required
+def edit_budget():
+    from models import Budget
+    
+    budget_id = int(request.form.get('budget_id'))
+    monthly_limit = float(request.form.get('monthly_limit', 0))
+    alert_threshold = float(request.form.get('alert_threshold', 80)) / 100
+    
+    budget = Budget.query.filter_by(id=budget_id, user_id=current_user.id).first()
+    if budget:
+        budget.monthly_limit = monthly_limit
+        budget.alert_threshold = alert_threshold
+        db.session.commit()
+        flash('Budget updated successfully!', 'success')
+    else:
+        flash('Budget not found.', 'error')
+    
+    return redirect(url_for('budgets'))
+
+
+@app.route('/budget/toggle/<int:budget_id>', methods=['POST'])
+@login_required
+def toggle_budget(budget_id):
+    from models import Budget
+    
+    budget = Budget.query.filter_by(id=budget_id, user_id=current_user.id).first()
+    if budget:
+        budget.is_active = not budget.is_active
+        db.session.commit()
+        status = 'enabled' if budget.is_active else 'disabled'
+        flash(f'Budget for {budget.category} {status}.', 'success')
+    
+    return redirect(url_for('budgets'))
+
+
+@app.route('/budget/delete/<int:budget_id>', methods=['POST'])
+@login_required
+def delete_budget(budget_id):
+    from models import Budget
+    
+    budget = Budget.query.filter_by(id=budget_id, user_id=current_user.id).first()
+    if budget:
+        category = budget.category
+        db.session.delete(budget)
+        db.session.commit()
+        flash(f'Budget for {category} deleted.', 'success')
+    
+    return redirect(url_for('budgets'))
+
+
+@app.route('/api/budgets/suggestions')
+@login_required
+def get_budget_suggestions():
+    """Get AI-generated budget suggestions based on spending patterns."""
+    from models import Budget
+    from services.groq_service import generate_budget_suggestions
+    from dateutil.relativedelta import relativedelta
+    
+    today = date.today()
+    
+    # Get last 3 months of transactions
+    three_months_ago = today - relativedelta(months=3)
+    
+    transactions = Transaction.query.filter(
+        Transaction.user_id == current_user.id,
+        Transaction.date >= three_months_ago,
+        Transaction.type == 'expense'
+    ).all()
+    
+    # Calculate average monthly spending per category
+    expense_by_category = {}
+    for t in transactions:
+        expense_by_category[t.category] = expense_by_category.get(t.category, 0) + t.amount
+    
+    # Average over 3 months
+    for cat in expense_by_category:
+        expense_by_category[cat] = round(expense_by_category[cat] / 3, 2)
+    
+    # Get income total (last 3 months average)
+    income_transactions = Transaction.query.filter(
+        Transaction.user_id == current_user.id,
+        Transaction.date >= three_months_ago,
+        Transaction.type == 'income'
+    ).all()
+    income_total = sum(t.amount for t in income_transactions) / 3
+    
+    # Get existing budget categories
+    existing_budgets = [b.category for b in Budget.query.filter_by(user_id=current_user.id).all()]
+    
+    # Generate AI suggestions
+    result = generate_budget_suggestions(expense_by_category, income_total, existing_budgets)
+    
+    return jsonify(result)
+
+
+# ============ RECURRING TRANSACTIONS ============
+@app.route('/recurring')
+@login_required
+def recurring():
+    from models import RecurringTemplate
+    
+    templates = RecurringTemplate.query.filter_by(user_id=current_user.id).order_by(RecurringTemplate.next_due).all()
+    accounts = Account.query.filter_by(user_id=current_user.id).all()
+    
+    # Calculate stats
+    active_count = sum(1 for t in templates if not t.is_paused)
+    paused_count = sum(1 for t in templates if t.is_paused)
+    monthly_income = sum(t.amount for t in templates if t.type == 'income' and not t.is_paused and t.frequency == 'monthly')
+    monthly_expense = sum(t.amount for t in templates if t.type == 'expense' and not t.is_paused and t.frequency == 'monthly')
+    
+    return render_template('recurring.html',
+        active_page='recurring',
+        templates=templates,
+        accounts=accounts,
+        active_count=active_count,
+        paused_count=paused_count,
+        monthly_income=monthly_income,
+        monthly_expense=monthly_expense,
+        today=date.today().isoformat()
+    )
+
+
+@app.route('/recurring/add', methods=['POST'])
+@login_required
+def add_recurring():
+    from services.recurring_service import create_recurring_template
+    
+    data = {
+        'amount': request.form.get('amount'),
+        'type': request.form.get('type'),
+        'category': request.form.get('category'),
+        'account_id': request.form.get('account_id'),
+        'description': request.form.get('description', ''),
+        'frequency': request.form.get('frequency'),
+        'start_date': request.form.get('start_date'),
+        'end_date': request.form.get('end_date') or None
+    }
+    
+    result = create_recurring_template(db, current_user.id, data)
+    
+    if result['success']:
+        flash(f"Recurring {data['type']} created for {data['category']}!", 'success')
+    else:
+        flash(f"Error: {result['error']}", 'error')
+    
+    return redirect(url_for('recurring'))
+
+
+@app.route('/recurring/pause/<int:template_id>', methods=['POST'])
+@login_required
+def pause_recurring(template_id):
+    from services.recurring_service import pause_recurring as pause_rec
+    
+    if pause_rec(db, template_id, current_user.id):
+        flash('Recurring transaction paused.', 'success')
+    else:
+        flash('Template not found.', 'error')
+    
+    return redirect(url_for('recurring'))
+
+
+@app.route('/recurring/resume/<int:template_id>', methods=['POST'])
+@login_required
+def resume_recurring(template_id):
+    from services.recurring_service import resume_recurring as resume_rec
+    
+    if resume_rec(db, template_id, current_user.id):
+        flash('Recurring transaction resumed.', 'success')
+    else:
+        flash('Template not found.', 'error')
+    
+    return redirect(url_for('recurring'))
+
+
+@app.route('/recurring/delete/<int:template_id>', methods=['POST'])
+@login_required
+def delete_recurring(template_id):
+    from services.recurring_service import delete_recurring as delete_rec
+    
+    if delete_rec(db, template_id, current_user.id):
+        flash('Recurring transaction deleted.', 'success')
+    else:
+        flash('Template not found.', 'error')
+    
+    return redirect(url_for('recurring'))
 
 
 # ============ LOANS ============

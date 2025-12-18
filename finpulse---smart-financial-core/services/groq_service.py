@@ -370,3 +370,101 @@ Use SAR as currency. Be concise and encouraging."""
     except Exception as e:
         print(f"Groq Loan Summary Error: {e}")
         return "Unable to generate loan summary at this time."
+
+
+def generate_budget_suggestions(
+    expense_by_category: dict,
+    income_total: float,
+    existing_budgets: list = None
+) -> dict:
+    """
+    Generate AI-powered budget suggestions based on spending patterns.
+    
+    Args:
+        expense_by_category: Dict of {category: total_spent} for past months
+        income_total: User's total income for the period
+        existing_budgets: List of category names that already have budgets
+        
+    Returns:
+        Dict with 'suggestions' list and 'summary' string
+    """
+    client = get_groq_client()
+    if not client:
+        return {
+            'success': False,
+            'error': 'AI service unavailable. Please check your API configuration.',
+            'suggestions': []
+        }
+    
+    if not expense_by_category:
+        return {
+            'success': True,
+            'suggestions': [],
+            'summary': "No spending data yet! Start tracking expenses to get personalized budget suggestions."
+        }
+    
+    try:
+        # Filter out categories that already have budgets
+        categories_to_suggest = expense_by_category
+        if existing_budgets:
+            categories_to_suggest = {k: v for k, v in expense_by_category.items() 
+                                     if k not in existing_budgets}
+        
+        if not categories_to_suggest:
+            return {
+                'success': True,
+                'suggestions': [],
+                'summary': "You already have budgets for all your spending categories! Great job staying organized."
+            }
+        
+        prompt = f"""You are a personal finance advisor. Analyze this spending data and suggest optimal monthly budgets.
+
+USER'S FINANCIAL DATA:
+- Monthly Income: {income_total:.0f} SAR
+- Spending by Category (averaged over recent months): {json.dumps(categories_to_suggest)}
+
+INSTRUCTIONS:
+1. For each category, suggest a realistic monthly budget limit
+2. Consider the 50/30/20 rule (50% needs, 30% wants, 20% savings)
+3. If spending seems high for a category, suggest a reasonable reduction
+4. If spending is already reasonable, suggest a limit slightly above actual spending for flexibility
+
+Return JSON with exactly this structure:
+{{
+    "suggestions": [
+        {{
+            "category": "Category Name",
+            "recommended_limit": 500,
+            "reasoning": "Brief 1-sentence explanation"
+        }}
+    ],
+    "summary": "One-sentence overall advice about their budget"
+}}
+
+Keep reasoning SHORT (under 15 words). Use SAR as currency."""
+
+        response = client.chat.completions.create(
+            model=get_model(),
+            messages=[
+                {"role": "system", "content": "You are a helpful financial advisor. Respond only with valid JSON."},
+                {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.5,
+            max_tokens=600
+        )
+        
+        result = json.loads(response.choices[0].message.content)
+        return {
+            'success': True,
+            'suggestions': result.get('suggestions', []),
+            'summary': result.get('summary', 'Based on your spending patterns, here are personalized budget recommendations.')
+        }
+        
+    except Exception as e:
+        print(f"Groq Budget Suggestion Error: {e}")
+        return {
+            'success': False,
+            'error': 'Unable to generate suggestions. Please try again.',
+            'suggestions': []
+        }
