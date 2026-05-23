@@ -1309,10 +1309,10 @@ html {
     top: 0;
     left: 0;
     right: 0;
-    height: 60px;
+    height: calc(60px + env(safe-area-inset-top, 0px));
     background: white;
     border-bottom: 1px solid var(--gray-200);
-    padding: 0 16px;
+    padding: env(safe-area-inset-top, 0px) 16px 0 16px;
     align-items: center;
     justify-content: space-between;
     z-index: 90;
@@ -1486,7 +1486,7 @@ html {
 
     .main-content {
         margin-left: 0;
-        padding-top: 92px;
+        padding-top: calc(92px + env(safe-area-inset-top, 0px));
     }
 }
 
@@ -1513,6 +1513,7 @@ html {
         border-right: 1px solid var(--gray-200);
         border-top: none;
         flex-direction: column;
+        padding-top: env(safe-area-inset-top, 0px);
     }
 
     .sidebar.open {
@@ -1560,7 +1561,7 @@ html {
     .main-content {
         margin-left: 0;
         padding: 16px;
-        padding-top: 76px;
+        padding-top: calc(76px + env(safe-area-inset-top, 0px));
         padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
     }
 
