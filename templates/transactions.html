@@ -150,7 +150,7 @@
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <span class="transaction-amount {{ t.type }}">{{ "%.2f"|format(t.amount) }} SAR</span>
                         <button
-                            onclick="openEditModal({{ t.id }}, '{{ t.date }}', {{ t.amount }}, '{{ t.category }}', {{ t.account_id }}, '{{ t.description or '' }}', '{{ t.budget_month.strftime(\'%Y-%m-%d\') if t.budget_month else \'\' }}')"
+                            onclick="openEditModal({{ t.id }}, '{{ t.date }}', {{ t.amount }}, '{{ t.category }}', {{ t.account_id }}, '{{ t.description or '' }}', '{{ t.budget_month.strftime('%Y-%m-%d') if t.budget_month else '' }}')"
                             class="btn btn-outline" style="padding: 6px 8px;" title="Edit">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2">
