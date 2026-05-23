@@ -2584,3 +2584,22 @@ def admin_clear_all_chat():
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+
+
+# Cloudflare Workers Python entrypoint wrapper
+try:
+    from workers import WorkerEntrypoint, asgi
+    from a2wsgi import WSGIMiddleware
+    
+    # Wrap WSGI Flask app to convert it to an ASGI application
+    asgi_app = WSGIMiddleware(app)
+    
+    class Default(WorkerEntrypoint):
+        async def fetch(self, request):
+            # Pass ASGI app and request environment context to the Workers ASGI runner
+            return await asgi.fetch(asgi_app, request, self.env)
+            
+except ImportError:
+    # Ignored if running in normal Python environment
+    pass
+
