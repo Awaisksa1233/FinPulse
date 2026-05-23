@@ -1,0 +1,7 @@
+{
+  "name": "FinPulse - Smart Financial Core",
+  "description": "A comprehensive financial management system integrating income, expenses, accounts, and loans with AI-powered insights and receipt scanning.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

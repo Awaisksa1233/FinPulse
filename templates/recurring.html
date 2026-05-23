@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+{% block title %}Recurring Transactions{% endblock %}
+
+{% block content %}
+<header class="page-header"
+    style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+    <div>
+        <h2 class="page-title">Recurring Transactions</h2>
+        <p class="page-subtitle">Automate your regular income and expenses.</p>
+    </div>
+    <button onclick="openAddModal()" class="btn btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
+        New Recurring
+    </button>
+</header>
+
+<!-- Stats Cards -->
+<div class="summary-grid" style="margin-bottom: 24px;">
+    <div class="summary-card white">
+        <p class="summary-label">Active</p>
+        <h3 class="summary-value" style="color: var(--gray-800);">{{ active_count }}</h3>
+    </div>
+    <div class="summary-card white">
+        <p class="summary-label">Paused</p>
+        <h3 class="summary-value" style="color: var(--gray-500);">{{ paused_count }}</h3>
+    </div>
+    <div class="summary-card white">
+        <p class="summary-label">Monthly Income</p>
+        <h3 class="summary-value" style="color: var(--success);">+{{ "%.2f"|format(monthly_income) }}</h3>
+    </div>
+    <div class="summary-card white">
+        <p class="summary-label">Monthly Expense</p>
+        <h3 class="summary-value" style="color: var(--danger);">-{{ "%.2f"|format(monthly_expense) }}</h3>
+    </div>
+</div>
+
+{% if templates %}
+<div class="card">
+    <div class="transaction-list">
+        {% for t in templates %}
+        <div class="recurring-item {{ 'recurring-paused' if t.is_paused else '' }}"
+            style="display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid var(--gray-100);">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <!-- Type Icon -->
+                <div class="transaction-icon {{ t.type }}">
+                    {% if t.type == 'income' %}
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                    </svg>
+                    {% else %}
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
+                    </svg>
+                    {% endif %}
+                </div>
+
+                <!-- Details -->
+                <div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <p style="font-weight: 600; color: var(--gray-800);">{{ t.category }}</p>
+                        {% if t.is_paused %}
+                        <span
+                            style="font-size: 10px; background: var(--gray-200); color: var(--gray-600); padding: 2px 6px; border-radius: 4px;">PAUSED</span>
+                        {% endif %}
+                    </div>
+                    <p style="font-size: 13px; color: var(--gray-500);">
+                        {{ t.description or 'No description' }} • {{ t.account.name if t.account else 'Unknown' }}
+                    </p>
+                    <p style="font-size: 12px; color: var(--gray-400); margin-top: 4px;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" style="vertical-align: middle;">
+                            <circle cx="12" cy="12" r="10" />
+                            <polyline points="12 6 12 12 16 14" />
+                        </svg>
+                        {{ t.frequency|capitalize }} • Next: {{ t.next_due }}
+                        {% if t.end_date %} • Ends: {{ t.end_date }}{% endif %}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Amount and Actions -->
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <span class="transaction-amount {{ t.type }}" style="font-size: 16px;">
+                    {{ '+' if t.type == 'income' else '-' }}{{ "%.2f"|format(t.amount) }} SAR
+                </span>
+
+                <div style="display: flex; gap: 8px;">
+                    {% if t.is_paused %}
+                    <form method="POST" action="{{ url_for('resume_recurring', template_id=t.id) }}" style="margin: 0;">
+                        <button type="submit" class="btn btn-outline" style="padding: 6px 10px;" title="Resume">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <polygon points="5 3 19 12 5 21 5 3" />
+                            </svg>
+                        </button>
+                    </form>
+                    {% else %}
+                    <form method="POST" action="{{ url_for('pause_recurring', template_id=t.id) }}" style="margin: 0;">
+                        <button type="submit" class="btn btn-outline" style="padding: 6px 10px;" title="Pause">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <rect x="6" y="4" width="4" height="16" />
+                                <rect x="14" y="4" width="4" height="16" />
+                            </svg>
+                        </button>
+                    </form>
+                    {% endif %}
+                    <form method="POST" action="{{ url_for('delete_recurring', template_id=t.id) }}" style="margin: 0;"
+                        onsubmit="return confirm('Delete this recurring transaction?');">
+                        <button type="submit" class="btn btn-outline" style="padding: 6px 10px; color: var(--danger);"
+                            title="Delete">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path
+                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            </svg>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="empty-state" style="padding: 48px;">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"
+            style="margin-bottom: 16px; opacity: 0.4;">
+            <polyline points="17 1 21 5 17 9" />
+            <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+            <polyline points="7 23 3 19 7 15" />
+            <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+        </svg>
+        <h3 style="margin-bottom: 8px; color: var(--gray-700);">No Recurring Transactions</h3>
+        <p style="color: var(--gray-500); margin-bottom: 16px;">Set up automatic transactions for regular income or
+            expenses like salary, rent, or subscriptions.</p>
+        <button onclick="openAddModal()" class="btn btn-primary">Create Recurring Transaction</button>
+    </div>
+</div>
+{% endif %}
+
+<!-- Add Recurring Modal -->
+<div id="addModal" class="modal-backdrop" style="display: none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">New Recurring Transaction</h3>
+            <button class="modal-close" onclick="closeAddModal()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+            </button>
+        </div>
+        <form method="POST" action="{{ url_for('add_recurring') }}">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Type</label>
+                    <select name="type" required class="form-control" id="recurringType" onchange="updateTypeStyles()">
+                        <option value="expense">Expense</option>
+                        <option value="income">Income</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Amount</label>
+                    <input type="number" name="amount" step="0.01" min="0.01" required class="form-control"
+                        placeholder="0.00">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <input type="text" name="category" list="categories" required class="form-control"
+                        placeholder="e.g., Salary, Rent">
+                    <datalist id="categories">
+                        <option value="Salary">
+                        <option value="Rent">
+                        <option value="Utilities">
+                        <option value="Subscription">
+                        <option value="Insurance">
+                        <option value="Loan Payment">
+                    </datalist>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Account</label>
+                    <select name="account_id" required class="form-control">
+                        {% for acc in accounts %}
+                        <option value="{{ acc.id }}">{{ acc.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <input type="text" name="description" class="form-control" placeholder="Optional description">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Frequency</label>
+                    <select name="frequency" required class="form-control">
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly" selected>Monthly</option>
+                        <option value="yearly">Yearly</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" name="start_date" value="{{ today }}" required class="form-control">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">End Date (Optional)</label>
+                <input type="date" name="end_date" class="form-control">
+                <p style="font-size: 12px; color: var(--gray-500); margin-top: 4px;">Leave empty to run indefinitely.
+                </p>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block" id="submitBtn">Create Recurring Expense</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function openAddModal() {
+        document.getElementById('addModal').style.display = 'flex';
+    }
+
+    function closeAddModal() {
+        document.getElementById('addModal').style.display = 'none';
+    }
+
+    function updateTypeStyles() {
+        const type = document.getElementById('recurringType').value;
+        const btn = document.getElementById('submitBtn');
+        if (type === 'income') {
+            btn.textContent = 'Create Recurring Income';
+            btn.classList.remove('btn-danger');
+            btn.classList.add('btn-success');
+        } else {
+            btn.textContent = 'Create Recurring Expense';
+            btn.classList.remove('btn-success');
+        }
+    }
+
+    // Close modal when clicking backdrop
+    document.getElementById('addModal').addEventListener('click', (e) => {
+        if (e.target.id === 'addModal') closeAddModal();
+    });
+</script>
+{% endblock %}
