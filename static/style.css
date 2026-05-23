@@ -1470,7 +1470,7 @@ html {
     .sidebar {
         transform: translateX(-100%);
         transition: transform 0.3s ease;
-        z-index: 100;
+        z-index: 1010;
     }
 
     .sidebar.open {
@@ -1480,6 +1480,7 @@ html {
     .sidebar-overlay {
         display: block;
         pointer-events: none;
+        z-index: 1005;
     }
 
     .sidebar-overlay.active {
@@ -1507,7 +1508,7 @@ html {
     .sidebar {
         transform: translateX(-100%);
         transition: transform 0.3s ease;
-        z-index: 100;
+        z-index: 1010;
         width: 280px;
         height: 100vh; /* fallback */
         height: 100dvh;
@@ -1551,6 +1552,7 @@ html {
     .sidebar-overlay {
         display: block;
         pointer-events: none;
+        z-index: 1005;
     }
 
     .sidebar-overlay.active {
@@ -1633,6 +1635,7 @@ html {
     /* Hide user section on bottom of sidebar on mobile - it shows in the menu */
     .sidebar-user {
         margin-top: auto;
+        padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     }
 }
 
