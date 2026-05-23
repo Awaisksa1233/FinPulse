@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, date, timedelta
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
@@ -13,6 +13,7 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'finpulse-secret-key')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///finpulse.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=30)
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
 # Enable CORS for API routes
 CORS(app, resources={r"/api/*": {"origins": "*"}})
@@ -92,6 +93,28 @@ def update_env_file(updates: dict):
     # Update os.environ
     for key, value in updates.items():
         os.environ[key] = value
+
+
+def get_api_user():
+    """Authenticate user using API token (query param, Bearer auth, or header)."""
+    # Try query param first
+    token = request.args.get('api_token')
+    
+    # Try Authorization header next
+    if not token:
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.lower().startswith('bearer '):
+            token = auth_header.split(' ', 1)[1].strip()
+            
+    # Try custom header last
+    if not token:
+        token = request.headers.get('X-API-Key')
+        
+    if not token:
+        return None
+        
+    from models import User
+    return User.query.filter_by(api_token=token).first()
 
 
 # ============ AUTH ============
@@ -365,6 +388,10 @@ def api_ai_transaction():
     """
     from services.groq_service import process_chat_command
     
+    user = get_api_user()
+    if not user:
+        return jsonify({'success': False, 'error': 'Unauthorized. Invalid or missing API token.'}), 401
+    
     data = request.get_json(silent=True)
     
     if data:
@@ -376,8 +403,8 @@ def api_ai_transaction():
     if not text:
         return jsonify({'success': False, 'error': 'No text provided'}), 400
     
-    # Get accounts
-    accounts = [a.to_dict() for a in Account.query.all()]
+    # Get user's accounts
+    accounts = [a.to_dict() for a in Account.query.filter_by(user_id=user.id).all()]
     
     if not accounts:
         return jsonify({'success': False, 'error': 'Create an account first'}), 400
@@ -400,19 +427,17 @@ def api_ai_transaction():
             description = details.get('description', '')
             account_id = details.get('account_id') or accounts[0]['id']
             
-            account = db.session.get(Account, int(account_id))
+            account = Account.query.filter_by(id=int(account_id), user_id=user.id).first()
             if not account:
-                return jsonify({'success': False, 'error': 'Account not found'}), 400
+                return jsonify({'success': False, 'error': 'Account not found or access denied.'}), 400
             
-            # Get user_id from account owner since API may not have session
-            account_user_id = account.user_id
             transaction = Transaction(
-                user_id=account_user_id,
+                user_id=user.id,
                 date=date.today(),
                 amount=amount,
                 type=t_type,
                 category=category,
-                account_id=int(account_id),
+                account_id=account.id,
                 description=description,
                 is_recurring=False
             )
@@ -440,12 +465,25 @@ def api_ai_transaction():
             amount = float(details.get('amount', 0))
             
             if from_id and to_id:
-                from_acc = db.session.get(Account, int(from_id))
-                to_acc = db.session.get(Account, int(to_id))
+                from_acc = Account.query.filter_by(id=int(from_id), user_id=user.id).first()
+                to_acc = Account.query.filter_by(id=int(to_id), user_id=user.id).first()
                 
                 if from_acc and to_acc:
                     from_acc.balance -= amount
                     to_acc.balance += amount
+                    
+                    transaction = Transaction(
+                        user_id=user.id,
+                        date=date.today(),
+                        amount=amount,
+                        type='transfer',
+                        category='Transfer',
+                        account_id=from_acc.id,
+                        to_account_id=to_acc.id,
+                        description=f'AI Transfer to {to_acc.name}',
+                        is_recurring=False
+                    )
+                    db.session.add(transaction)
                     db.session.commit()
                     
                     return jsonify({
@@ -471,14 +509,8 @@ def api_ai_transaction():
             else:
                 due_date = date.today() + timedelta(days=30)
             
-            # Get user_id from the first account's owner for API context
-            api_user_id = accounts[0].get('user_id') if accounts else 1
-            # Fetch actual user_id from database via account
-            first_account = db.session.get(Account, accounts[0]['id']) if accounts else None
-            api_user_id = first_account.user_id if first_account else 1
-            
             loan = Loan(
-                user_id=api_user_id,
+                user_id=user.id,
                 counterparty=counterparty,
                 type=loan_type,
                 principal_amount=amount,
@@ -491,7 +523,7 @@ def api_ai_transaction():
             # Adjust account balance
             new_balance = None
             if account_id:
-                account = db.session.get(Account, int(account_id))
+                account = Account.query.filter_by(id=int(account_id), user_id=user.id).first()
                 if account:
                     if loan_type == 'given':
                         # Lent money = money goes out
@@ -516,8 +548,8 @@ def api_ai_transaction():
     
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
-
-
+ 
+ 
 @app.route('/api/transaction', methods=['POST'])
 def api_add_transaction():
     """
@@ -533,6 +565,10 @@ def api_add_transaction():
         "date": "2024-01-15"  // optional, defaults to today
     }
     """
+    user = get_api_user()
+    if not user:
+        return jsonify({'success': False, 'error': 'Unauthorized. Invalid or missing API token.'}), 401
+        
     data = request.get_json()
     
     if not data:
@@ -567,16 +603,16 @@ def api_add_transaction():
     # Find account
     account_name = data.get('account')
     if account_name:
-        account = Account.query.filter(Account.name.ilike(f'%{account_name}%')).first()
+        account = Account.query.filter(Account.user_id == user.id, Account.name.ilike(f'%{account_name}%')).first()
     else:
-        account = Account.query.first()
+        account = Account.query.filter_by(user_id=user.id).first()
     
     if not account:
-        return jsonify({'success': False, 'error': 'No accounts found. Create an account first.'}), 400
+        return jsonify({'success': False, 'error': 'Account not found. Create an account first.'}), 400
     
-    # Create transaction - use account's user_id for API context
+    # Create transaction
     transaction = Transaction(
-        user_id=account.user_id,
+        user_id=user.id,
         date=t_date,
         amount=amount,
         type=t_type,
@@ -601,20 +637,28 @@ def api_add_transaction():
         'transaction_id': transaction.id,
         'new_balance': account.balance
     })
-
-
+ 
+ 
 @app.route('/api/accounts', methods=['GET'])
 def api_get_accounts():
     """Get list of accounts for iOS Shortcuts."""
-    accounts = Account.query.all()
+    user = get_api_user()
+    if not user:
+        return jsonify({'success': False, 'error': 'Unauthorized. Invalid or missing API token.'}), 401
+    accounts = Account.query.filter_by(user_id=user.id).all()
     return jsonify({
         'accounts': [{'id': a.id, 'name': a.name, 'type': a.type, 'balance': a.balance} for a in accounts]
     })
 
 
 @app.route('/shortcut')
+@login_required
 def shortcut_setup():
     """iOS Shortcut setup guide."""
+    import secrets
+    if not current_user.api_token:
+        current_user.api_token = secrets.token_hex(32)
+        db.session.commit()
     server_url = request.host_url.rstrip('/')
     return render_template('shortcut.html', active_page='shortcut', server_url=server_url)
 
@@ -734,7 +778,7 @@ def expenses():
 @app.route('/transaction/add', methods=['POST'])
 @login_required
 def add_transaction():
-    # Validate account exists
+    # Validate account exists and belongs to current user
     account_id_str = request.form.get('account_id')
     if not account_id_str:
         flash('Please create an account first before adding transactions.', 'error')
@@ -742,8 +786,8 @@ def add_transaction():
     
     account_id = int(account_id_str)
     account = db.session.get(Account, account_id)
-    if not account:
-        flash('Invalid account. Please select a valid account.', 'error')
+    if not account or account.user_id != current_user.id:
+        flash('Invalid account or access denied.', 'error')
         return redirect(url_for('accounts'))
     
     t_type = request.form.get('type')
@@ -787,8 +831,8 @@ def edit_transaction():
     transaction_id = int(request.form.get('id'))
     transaction = db.session.get(Transaction, transaction_id)
     
-    if not transaction:
-        flash('Transaction not found.', 'error')
+    if not transaction or transaction.user_id != current_user.id:
+        flash('Transaction not found or access denied.', 'error')
         return redirect(url_for('expenses'))
     
     old_amount = transaction.amount
@@ -806,6 +850,9 @@ def edit_transaction():
     # Reverse old balance change
     old_account = db.session.get(Account, old_account_id)
     if old_account:
+        if old_account.user_id != current_user.id:
+            flash('Access denied.', 'error')
+            return redirect(url_for('expenses'))
         if old_type == 'income':
             old_account.balance -= old_amount
         else:
@@ -813,6 +860,10 @@ def edit_transaction():
     
     # Apply new balance change
     new_account = db.session.get(Account, new_account_id)
+    if not new_account or new_account.user_id != current_user.id:
+        flash('Invalid destination account or access denied.', 'error')
+        return redirect(url_for('expenses'))
+        
     if new_account:
         if new_type == 'income':
             new_account.balance += new_amount
@@ -839,6 +890,10 @@ def delete_transaction(transaction_id):
     transaction = db.session.get(Transaction, transaction_id)
     
     if transaction:
+        if transaction.user_id != current_user.id:
+            flash('Access denied.', 'error')
+            return redirect(url_for('expenses'))
+            
         # Reverse balance change
         account = db.session.get(Account, transaction.account_id)
         if account:
@@ -890,6 +945,10 @@ def edit_account():
     account_id = int(request.form.get('id'))
     account = db.session.get(Account, account_id)
     if account:
+        if account.user_id != current_user.id:
+            flash('Access denied.', 'error')
+            return redirect(url_for('accounts'))
+            
         account.name = request.form.get('name')
         account.type = request.form.get('type')
         account.balance = float(request.form.get('balance'))
@@ -904,6 +963,10 @@ def edit_account():
 def delete_account(account_id):
     account = db.session.get(Account, account_id)
     if account:
+        if account.user_id != current_user.id:
+            flash('Access denied.', 'error')
+            return redirect(url_for('accounts'))
+            
         db.session.delete(account)
         db.session.commit()
         flash('Account deleted.', 'success')
@@ -925,6 +988,10 @@ def transfer():
     to_acc = db.session.get(Account, to_id)
     
     if from_acc and to_acc:
+        if from_acc.user_id != current_user.id or to_acc.user_id != current_user.id:
+            flash('Access denied.', 'error')
+            return redirect(url_for('accounts'))
+            
         from_acc.balance -= amount
         to_acc.balance += amount
         
@@ -1315,6 +1382,9 @@ def add_loan_account():
             # Adjust account balance if requested
             if adjust_balance and account_id:
                 account = db.session.get(Account, int(account_id))
+                if account and account.user_id != current_user.id:
+                    flash('Invalid account selected or access denied.', 'error')
+                    return redirect(url_for('loans'))
                 if account:
                     if account_type == 'receivable':
                         account.balance -= amount  # Money lent out
@@ -1334,7 +1404,7 @@ def add_loan_entry(account_id):
     
     loan_account = db.session.get(LoanAccount, account_id)
     if not loan_account or loan_account.user_id != current_user.id:
-        flash('Loan account not found.', 'error')
+        flash('Loan account not found or access denied.', 'error')
         return redirect(url_for('loans'))
     
     amount = float(request.form.get('amount', 0))
@@ -1363,6 +1433,9 @@ def add_loan_entry(account_id):
     # Adjust bank account balance if requested
     if adjust_balance and bank_account_id:
         bank_account = db.session.get(Account, int(bank_account_id))
+        if bank_account and bank_account.user_id != current_user.id:
+            flash('Invalid account selected or access denied.', 'error')
+            return redirect(url_for('loans'))
         if bank_account:
             if loan_account.type == 'receivable':
                 if entry_type == 'lent':
@@ -1395,7 +1468,7 @@ def delete_loan_account(account_id):
         db.session.commit()
         flash(f'Loan account for {name} deleted.', 'success')
     else:
-        flash('Loan account not found.', 'error')
+        flash('Loan account not found or access denied.', 'error')
     
     return redirect(url_for('loans'))
 
@@ -1425,6 +1498,9 @@ def add_loan():
     # Adjust account balance if requested
     if adjust_balance and account_id:
         account = db.session.get(Account, int(account_id))
+        if account and account.user_id != current_user.id:
+            flash('Invalid account selected or access denied.', 'error')
+            return redirect(url_for('loans'))
         if account:
             if loan_type == 'given':
                 account.balance -= amount  # Money lent out
@@ -1440,8 +1516,8 @@ def add_loan():
 @login_required
 def pay_loan(loan_id):
     loan = db.session.get(Loan, loan_id)
-    if not loan:
-        flash('Loan not found.', 'error')
+    if not loan or loan.user_id != current_user.id:
+        flash('Loan not found or access denied.', 'error')
         return redirect(url_for('loans'))
     
     amount = float(request.form.get('amount', 0))
@@ -1460,6 +1536,9 @@ def pay_loan(loan_id):
     # Adjust account balance
     if account_id:
         account = db.session.get(Account, int(account_id))
+        if account and account.user_id != current_user.id:
+            flash('Invalid account selected or access denied.', 'error')
+            return redirect(url_for('loans'))
         if account:
             if loan.type == 'given':
                 # Receiving payment = money comes in
@@ -1483,9 +1562,14 @@ def pay_loan(loan_id):
 def delete_loan(loan_id):
     loan = db.session.get(Loan, loan_id)
     if loan:
+        if loan.user_id != current_user.id:
+            flash('Access denied.', 'error')
+            return redirect(url_for('loans'))
         db.session.delete(loan)
         db.session.commit()
         flash('Loan record deleted.', 'success')
+    else:
+        flash('Loan record not found.', 'error')
     return redirect(url_for('loans'))
 
 
@@ -2155,7 +2239,7 @@ GROQ_MODELS = [
 
 @app.route('/admin')
 def admin():
-    authenticated = request.cookies.get('admin_auth') == 'true'
+    authenticated = session.get('admin_auth') == True
     
     api_key = os.getenv('GROQ_API_KEY', '')
     # Mask API key for display
@@ -2217,7 +2301,7 @@ def admin_fetch_models():
     """Fetch available models from Groq API."""
     global GROQ_MODELS
     
-    if request.cookies.get('admin_auth') != 'true':
+    if session.get('admin_auth') is not True:
         return redirect(url_for('admin'))
     
     api_key = os.getenv('GROQ_API_KEY', '')
@@ -2275,10 +2359,10 @@ def admin_auth():
     pin = request.form.get('pin', '')
     
     if pin == ADMIN_PIN:
-        response = redirect(url_for('admin'))
-        response.set_cookie('admin_auth', 'true', max_age=1800)  # 30 min session
+        session.permanent = True
+        session['admin_auth'] = True
         flash('Admin access granted.', 'success')
-        return response
+        return redirect(url_for('admin'))
     else:
         flash('Invalid PIN.', 'error')
         return redirect(url_for('admin'))
@@ -2286,7 +2370,7 @@ def admin_auth():
 
 @app.route('/admin/save', methods=['POST'])
 def admin_save():
-    if request.cookies.get('admin_auth') != 'true':
+    if session.get('admin_auth') is not True:
         return redirect(url_for('admin'))
     
     api_key = request.form.get('api_key', '')
@@ -2309,7 +2393,7 @@ def admin_save():
 
 @app.route('/admin/reset', methods=['POST'])
 def admin_reset():
-    if request.cookies.get('admin_auth') != 'true':
+    if session.get('admin_auth') is not True:
         return redirect(url_for('admin'))
     
     # Delete all records
@@ -2325,7 +2409,7 @@ def admin_reset():
 @app.route('/admin/delete-user/<int:user_id>', methods=['POST'])
 def admin_delete_user(user_id):
     """Delete a user and all their data."""
-    if request.cookies.get('admin_auth') != 'true':
+    if session.get('admin_auth') is not True:
         return redirect(url_for('admin'))
     
     from models import TelegramUser
@@ -2355,7 +2439,7 @@ def admin_change_pin():
     """Change admin PIN."""
     global ADMIN_PIN
     
-    if request.cookies.get('admin_auth') != 'true':
+    if session.get('admin_auth') is not True:
         return redirect(url_for('admin'))
     
     current_pin = request.form.get('current_pin', '')
@@ -2379,7 +2463,7 @@ def admin_change_pin():
 @app.route('/admin/toggle-feature', methods=['POST'])
 def admin_toggle_feature():
     """Toggle feature flags."""
-    if request.cookies.get('admin_auth') != 'true':
+    if session.get('admin_auth') is not True:
         return redirect(url_for('admin'))
     
     feature = request.form.get('feature', '')
@@ -2402,7 +2486,7 @@ def admin_toggle_feature():
 @app.route('/admin/export-users')
 def admin_export_users():
     """Export all users to CSV."""
-    if request.cookies.get('admin_auth') != 'true':
+    if session.get('admin_auth') is not True:
         return redirect(url_for('admin'))
     
     from models import TelegramUser
@@ -2442,7 +2526,7 @@ def admin_export_users():
 @app.route('/admin/clear-all-chat', methods=['POST'])
 def admin_clear_all_chat():
     """Clear all chat history for all users."""
-    if request.cookies.get('admin_auth') != 'true':
+    if session.get('admin_auth') is not True:
         return redirect(url_for('admin'))
     
     count = ChatMessage.query.count()

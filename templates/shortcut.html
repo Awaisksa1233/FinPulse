@@ -4,63 +4,71 @@
 {% block content %}
 <header class="page-header">
     <h2 class="page-title">iOS Shortcut Setup</h2>
-    <p class="page-subtitle">Add expenses with natural language!</p>
+    <p class="page-subtitle">Add expenses with natural language using Siri or Shortcuts!</p>
 </header>
 
 <div class="card"
-    style="margin-bottom: 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-    <h3 class="card-title" style="color: white;">AI API Endpoint</h3>
-    <div
-        style="background: rgba(255,255,255,0.2); padding: 16px; border-radius: 8px; font-family: monospace; word-break: break-all;">
-        {{ server_url }}/api/ai
+    style="margin-bottom: 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
+    <h3 class="card-title" style="color: white; margin-bottom: 12px;">🔒 Secure API Configuration</h3>
+    <p style="margin-bottom: 16px; opacity: 0.9; font-size: 15px;">Your personal API key is embedded below. Keep it secret as it allows writing transactions to your accounts.</p>
+    
+    <div style="margin-bottom: 16px;">
+        <label style="display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; opacity: 0.8; font-weight: bold;">Your Personal API URL</label>
+        <div style="background: rgba(0, 0, 0, 0.2); padding: 16px; border-radius: 8px; font-family: monospace; word-break: break-all; font-size: 13px; border: 1px dashed rgba(255,255,255,0.4);" id="apiUrlText">
+            {{ server_url }}/api/ai?api_token={{ current_user.api_token }}
+        </div>
     </div>
-    <p style="margin-top: 12px; opacity: 0.9; font-size: 14px;">Just say "Paid 50 for lunch" and AI will parse it!</p>
+    
+    <button class="btn" id="copyTokenBtn" style="background: white; color: #764ba2; border: none; font-weight: bold; border-radius: 6px; padding: 10px 16px; cursor: pointer; transition: all 0.2s ease-in-out; font-size: 14px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+        📋 Copy API URL
+    </button>
 </div>
 
-<div class="card" style="margin-bottom: 24px;">
-    <h3 class="card-title">Step-by-Step Setup</h3>
-    <ol style="line-height: 2.2; padding-left: 20px;">
-        <li>Open <strong>Shortcuts</strong> app on your iPhone</li>
-        <li>Tap <strong>+</strong> to create new shortcut</li>
-        <li>Add action: <strong>"Ask for Input"</strong> → Text → Prompt: "What did you spend?"</li>
-        <li>Add action: <strong>"Get Contents of URL"</strong></li>
-        <li>URL: <code>{{ server_url }}/api/ai</code></li>
-        <li>Method: <strong>POST</strong></li>
-        <li>Request Body: <strong>JSON</strong></li>
-        <li>Add field: <code>text</code> → Select "Provided Input"</li>
-        <li>Add action: <strong>"Get Dictionary Value"</strong> → Key: "message"</li>
-        <li>Add action: <strong>"Show Result"</strong></li>
-        <li>Name: <strong>"Add Expense"</strong></li>
+<div class="card" style="margin-bottom: 24px; border-radius: 12px;">
+    <h3 class="card-title" style="margin-bottom: 16px;">📱 Step-by-Step Setup Guide</h3>
+    <ol style="line-height: 2.2; padding-left: 24px; font-size: 15px;">
+        <li>Open the <strong>Shortcuts</strong> app on your iPhone.</li>
+        <li>Tap the <strong>+</strong> icon in the top right to create a new shortcut.</li>
+        <li>Add the action: <strong>"Ask for Input"</strong> (Type: <code>Text</code>, Prompt: <code>"What did you spend?"</code>).</li>
+        <li>Add the action: <strong>"Get Contents of URL"</strong>.</li>
+        <li>Set the URL to your Personal API URL copied above.</li>
+        <li>Change the Method to <strong>POST</strong>.</li>
+        <li>Set the Request Body to <strong>JSON</strong>.</li>
+        <li>Add a new text field: Key: <code>text</code>, Value: Select <strong>"Provided Input"</strong>.</li>
+        <li>Add the action: <strong>"Get Dictionary Value"</strong> (Key: <code>message</code>).</li>
+        <li>Add the action: <strong>"Show Result"</strong> (displays the AI's confirmation).</li>
+        <li>Name the shortcut <strong>"Add Expense"</strong> and save!</li>
     </ol>
 </div>
 
 <div class="card" style="margin-bottom: 24px;">
-    <h3 class="card-title">Example Commands</h3>
-    <ul style="line-height: 2; padding-left: 20px;">
+    <h3 class="card-title">💡 Example Voice Commands</h3>
+    <p style="color: var(--gray-600); margin-bottom: 12px;">You can trigger the shortcut by saying "Hey Siri, Add Expense", and speak phrases like:</p>
+    <ul style="line-height: 2; padding-left: 24px; font-size: 15px;">
         <li><code>Paid 50 for lunch</code></li>
         <li><code>Spent 200 on groceries</code></li>
         <li><code>Received 5000 salary</code></li>
-        <li><code>Transfer 100 from wallet to bank</code></li>
+        <li><code>Transfer 100 from Wallet to Bank</code></li>
     </ul>
 </div>
 
 <div class="card" style="margin-bottom: 24px;">
-    <h3 class="card-title">Quick Test</h3>
-    <p style="margin-bottom: 16px;">Test the AI API:</p>
+    <h3 class="card-title" style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">🧪 Live API Sandbox</h3>
+    <p style="margin-bottom: 16px; color: var(--gray-600);">Test your token-authenticated API directly from the browser:</p>
     <form id="testForm">
-        <div class="form-group">
-            <label class="form-label">Enter natural language command</label>
-            <input type="text" id="testText" class="form-control" placeholder="e.g. Paid 50 for coffee">
+        <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" style="font-weight: bold; margin-bottom: 8px; display: block;">Enter Natural Language Command</label>
+            <input type="text" id="testText" class="form-control" placeholder="e.g. Spent 35 SAR on coffee at Starbucks" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--gray-300);">
         </div>
-        <button type="submit" class="btn btn-primary">Test AI API</button>
+        <button type="submit" class="btn btn-primary" style="padding: 12px 20px; font-weight: bold; border-radius: 8px;">Test AI API</button>
     </form>
     <div id="testResult"
-        style="margin-top: 16px; padding: 12px; background: var(--gray-100); border-radius: 8px; display: none;"></div>
+        style="margin-top: 16px; padding: 16px; background: var(--gray-100); border-radius: 8px; display: none; line-height: 1.5; font-size: 14px;"></div>
 </div>
 
 <div class="card">
-    <h3 class="card-title">JSON Format</h3>
-    <pre style="background: var(--gray-900); color: #10b981; padding: 16px; border-radius: 8px; overflow-x: auto;">{
+    <h3 class="card-title" style="margin-bottom: 12px;">📄 JSON Request Body Structure</h3>
+    <pre style="background: var(--gray-900); color: #10b981; padding: 16px; border-radius: 8px; overflow-x: auto; font-family: monospace; font-size: 13px; border: 1px solid var(--gray-800);">{
   "text": "Paid 50 for lunch"
 }</pre>
 </div>
@@ -68,26 +76,56 @@
 
 {% block scripts %}
 <script>
+    // Copy URL functionality
+    document.getElementById('copyTokenBtn').addEventListener('click', () => {
+        const textToCopy = document.getElementById('apiUrlText').innerText.trim();
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            const btn = document.getElementById('copyTokenBtn');
+            btn.innerHTML = '✅ URL Copied!';
+            setTimeout(() => {
+                btn.innerHTML = '📋 Copy API URL';
+            }, 2500);
+        }).catch(err => {
+            console.error('Error copying text: ', err);
+        });
+    });
+
+    // Sandbox test functionality
     document.getElementById('testForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const text = document.getElementById('testText').value;
+        const text = document.getElementById('testText').value.trim();
         const result = document.getElementById('testResult');
 
+        if (!text) return;
+
         result.style.display = 'block';
-        result.innerHTML = 'Processing with AI...';
+        result.innerHTML = '⏳ Processing command with FinPulse AI...';
+        result.style.color = 'var(--gray-700)';
 
         try {
-            const res = await fetch('/api/ai', {
+            const res = await fetch('/api/ai?api_token={{ current_user.api_token }}', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text: text })
             });
             const data = await res.json();
-            result.innerHTML = '<strong>' + (data.success ? '✅ Success' : '❌ Failed') + '</strong><br>' + (data.message || data.error);
-            result.style.color = data.success ? '#10b981' : '#f43f5e';
+            
+            if (data.success) {
+                result.innerHTML = '<strong>✅ SUCCESS</strong><br>' + (data.message || 'Transaction processed successfully!');
+                result.style.color = '#065f46';
+                result.style.background = '#d1fae5';
+                result.style.border = '1px solid #a7f3d0';
+            } else {
+                result.innerHTML = '<strong>❌ FAILED</strong><br>' + (data.error || 'Unknown error occurred.');
+                result.style.color = '#991b1b';
+                result.style.background = '#fee2e2';
+                result.style.border = '1px solid #fca5a5';
+            }
         } catch (err) {
-            result.innerHTML = '❌ Connection failed: ' + err.message;
-            result.style.color = '#f43f5e';
+            result.innerHTML = '<strong>❌ CONNECTION FAILED</strong><br>' + err.message;
+            result.style.color = '#991b1b';
+            result.style.background = '#fee2e2';
+            result.style.border = '1px solid #fca5a5';
         }
     });
 </script>

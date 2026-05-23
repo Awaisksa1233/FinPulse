@@ -127,6 +127,14 @@ def create_recurring_template(db, user_id: int, data: dict) -> dict:
             from datetime import datetime
             end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
         
+        from models import Account
+        account = Account.query.filter_by(id=int(data['account_id']), user_id=user_id).first()
+        if not account:
+            return {
+                'success': False,
+                'error': 'Selected account not found or access denied.'
+            }
+            
         template = RecurringTemplate(
             user_id=user_id,
             amount=float(data['amount']),
