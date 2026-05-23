@@ -1129,7 +1129,7 @@ def budgets():
     
     # Get categories from recent transactions for suggestions
     all_categories = set()
-    recent_expenses = Transaction.query.filter_by(user_id=current_user.id, type='expense').all()
+    recent_expenses = Transaction.query.filter_by(user_id=current_user.id, type='expense').order_by(Transaction.date.desc()).limit(100).all()
     for t in recent_expenses:
         all_categories.add(t.category)
     
