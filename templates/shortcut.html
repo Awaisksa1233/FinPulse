@@ -56,6 +56,7 @@
     <h3 class="card-title" style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">🧪 Live API Sandbox</h3>
     <p style="margin-bottom: 16px; color: var(--gray-600);">Test your token-authenticated API directly from the browser:</p>
     <form id="testForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group" style="margin-bottom: 16px;">
             <label class="form-label" style="font-weight: bold; margin-bottom: 8px; display: block;">Enter Natural Language Command</label>
             <input type="text" id="testText" class="form-control" placeholder="e.g. Spent 35 SAR on coffee at Starbucks" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--gray-300);">

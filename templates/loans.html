@@ -327,6 +327,7 @@
                 </button>
                 <form method="POST" action="{{ url_for('delete_loan_account', account_id=la.id) }}"
                     onsubmit="return confirm('Delete {{ la.name }} and all entries?');" style="margin: 0;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-outline" style="padding: 10px;" title="Delete">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2">
@@ -365,6 +366,7 @@
             </button>
         </div>
         <form method="POST" action="{{ url_for('add_loan_account') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group" style="display: flex; gap: 16px; margin-bottom: 16px;">
                 <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                     <input type="radio" name="type" value="receivable" checked style="accent-color: var(--warning);">
@@ -433,6 +435,7 @@
             </button>
         </div>
         <form method="POST" id="addEntryForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group" style="display: flex; gap: 16px; margin-bottom: 16px;">
                 <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                     <input type="radio" name="entry_type" value="lent" checked style="accent-color: var(--warning);">

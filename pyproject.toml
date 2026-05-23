@@ -11,6 +11,7 @@ dependencies = [
     "groq",
     "httpx",
     "sqlalchemy-cloudflare-d1",
+    "flask-wtf",
     "a2wsgi"
 ]
 

@@ -40,6 +40,29 @@ class Account(db.Model):
     
     transactions = db.relationship('Transaction', backref='account', lazy=True, foreign_keys='Transaction.account_id')
     
+    @property
+    def logo_url(self):
+        bank_domains = {
+            'snb': 'alahli.com',
+            'alahli': 'alahli.com',
+            'rajhi': 'alrajhibank.com.sa',
+            'riyad': 'riyadbank.com',
+            'stc': 'stcpay.com.sa',
+            'd360': 'd360.com',
+            'urpay': 'urpay.com.sa',
+            'alinma': 'alinma.com',
+            'sab': 'sab.com',
+            'awwal': 'sab.com',
+            'albilad': 'bankalbilad.com',
+            'mobily': 'mobilypay.com',
+            'tiqmo': 'tiqmo.com'
+        }
+        name_lower = self.name.lower()
+        for keyword, domain in bank_domains.items():
+            if keyword in name_lower:
+                return f"https://www.google.com/s2/favicons?domain={domain}&sz=128"
+        return None
+
     def to_dict(self):
         return {
             'id': self.id,

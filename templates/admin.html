@@ -12,6 +12,7 @@
 <div class="card" style="max-width: 400px; margin: 0 auto;">
     <h3 class="card-title">🔐 Enter Admin PIN</h3>
     <form method="POST" action="{{ url_for('admin_auth') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group">
             <input type="password" name="pin" class="form-control" placeholder="Enter PIN"
                 style="text-align: center; font-size: 24px; letter-spacing: 8px;" maxlength="4" required>
@@ -113,6 +114,7 @@
                             <form method="POST" action="{{ url_for('admin_delete_user', user_id=user.id) }}"
                                 style="display: inline;"
                                 onsubmit="return confirm('Delete {{ user.name }} and ALL their data?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="btn-icon btn-danger-icon" title="Delete User">
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                         stroke-width="2">
@@ -140,6 +142,7 @@
     <div class="card">
         <h3 class="card-title">AI Configuration</h3>
         <form method="POST" action="{{ url_for('admin_save') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group" style="margin-bottom: 16px;">
                 <label class="form-label">Groq API Key</label>
                 <input type="password" name="api_key" class="form-control" value="{{ api_key }}" placeholder="gsk_...">
@@ -177,6 +180,7 @@
         <hr style="margin: 20px 0; border-color: var(--gray-200);">
 
         <form method="POST" action="{{ url_for('admin_fetch_models') }}" style="text-align: center;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-outline" style="gap: 8px;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3" />
@@ -195,6 +199,7 @@
     <div class="card" style="margin-bottom: 24px;">
         <h3 class="card-title">🔑 Change Admin PIN</h3>
         <form method="POST" action="{{ url_for('admin_change_pin') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label class="form-label">Current PIN</label>
                 <input type="password" name="current_pin" class="form-control" placeholder="****" maxlength="4" required
@@ -220,6 +225,7 @@
                     </p>
                 </div>
                 <form method="POST" action="{{ url_for('admin_toggle_feature') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="feature" value="maintenance">
                     <button type="submit" class="toggle-btn {{ 'active' if maintenance_mode else '' }}">
                         {{ 'ON' if maintenance_mode else 'OFF' }}
@@ -234,6 +240,7 @@
                     </p>
                 </div>
                 <form method="POST" action="{{ url_for('admin_toggle_feature') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="feature" value="registration">
                     <button type="submit" class="toggle-btn {{ 'active' if registration_open else '' }}">
                         {{ 'ON' if registration_open else 'OFF' }}
@@ -265,6 +272,7 @@
         </p>
         <form method="POST" action="{{ url_for('admin_clear_all_chat') }}"
             onsubmit="return confirm('Clear ALL chat history for ALL users?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-outline" style="color: var(--warning);">Clear All Chat History</button>
         </form>
     </div>
@@ -276,6 +284,7 @@
         </p>
         <form method="POST" action="{{ url_for('admin_reset') }}"
             onsubmit="return confirm('This will DELETE ALL FINANCIAL DATA. Are you sure?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-outline" style="color: var(--danger);">Reset Database</button>
         </form>
     </div>

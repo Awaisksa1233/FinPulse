@@ -90,6 +90,7 @@
                 <div style="display: flex; gap: 8px;">
                     {% if t.is_paused %}
                     <form method="POST" action="{{ url_for('resume_recurring', template_id=t.id) }}" style="margin: 0;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-outline" style="padding: 6px 10px;" title="Resume">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2">
@@ -99,6 +100,7 @@
                     </form>
                     {% else %}
                     <form method="POST" action="{{ url_for('pause_recurring', template_id=t.id) }}" style="margin: 0;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-outline" style="padding: 6px 10px;" title="Pause">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2">
@@ -110,6 +112,7 @@
                     {% endif %}
                     <form method="POST" action="{{ url_for('delete_recurring', template_id=t.id) }}" style="margin: 0;"
                         onsubmit="return confirm('Delete this recurring transaction?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-outline" style="padding: 6px 10px; color: var(--danger);"
                             title="Delete">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -157,6 +160,7 @@
             </button>
         </div>
         <form method="POST" action="{{ url_for('add_recurring') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Type</label>

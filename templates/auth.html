@@ -194,6 +194,7 @@
             </p>
 
             <form action="{{ url_for('login_telegram') }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group" style="margin-bottom: 12px;">
                     <input type="text" name="code" class="form-control" placeholder="Enter your code"
                         style="text-transform: uppercase; letter-spacing: 3px; font-family: monospace; text-align: center; font-size: 18px; padding: 14px;"
@@ -223,6 +224,7 @@
             <div class="divider"><span>Email Login</span></div>
 
             <form class="auth-form" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 {% if mode == 'register' %}
                 <div class="form-group">
                     <label class="form-label">Name</label>

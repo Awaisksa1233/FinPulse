@@ -6,7 +6,8 @@ from flask_cors import CORS
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from dotenv import load_dotenv
 
-load_dotenv()
+basedir = os.path.abspath(os.path.dirname(__file__))
+load_dotenv(os.path.join(basedir, '.env'))
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'finpulse-secret-key')
@@ -84,6 +85,26 @@ def check_maintenance_mode():
         </body>
         </html>
         ''', 503
+
+@app.before_request
+def check_csrf():
+    if request.method == 'POST':
+        # Skip CSRF for API endpoints and telegram webhook
+        if request.path.startswith('/api/') or request.path.startswith('/telegram/set-webhook'):
+            return None
+        
+        token = session.get('_csrf_token', None)
+        if not token or token != request.form.get('csrf_token'):
+            abort(403)
+
+def generate_csrf_token():
+    if '_csrf_token' not in session:
+        import secrets
+        session['_csrf_token'] = secrets.token_hex(32)
+    return session['_csrf_token']
+
+app.jinja_env.globals['csrf_token'] = generate_csrf_token
+
 
 
 def update_env_file(updates: dict):
@@ -1791,6 +1812,12 @@ def telegram_webhook():
     update = request.get_json()
     if not update:
         return 'OK', 200
+        
+    secret_token = os.environ.get('TELEGRAM_WEBHOOK_SECRET')
+    if secret_token:
+        header_token = request.headers.get('X-Telegram-Bot-Api-Secret-Token')
+        if header_token != secret_token:
+            return 'Unauthorized', 401
     
     parsed = process_telegram_update(update)
     if not parsed or not parsed.get('text'):

@@ -69,6 +69,7 @@
     </div>
 
     <form class="chat-input-form" id="chatForm" onsubmit="sendMessage(event)">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="text" class="chat-input" id="chatInput" placeholder="Ask anything about your finances..."
             autocomplete="off">
         <button type="submit" class="chat-send-btn" id="sendBtn">

@@ -52,6 +52,7 @@
             <hr style="margin: 1.5rem 0; border-color: var(--border);">
 
             <form action="{{ url_for('telegram_save_token') }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group">
                     <label for="bot_token">Bot Token</label>
                     <input type="text" id="bot_token" name="bot_token" class="form-control"
@@ -103,6 +104,7 @@
             {% endif %}
 
             <form action="{{ url_for('telegram_set_webhook') }}" method="POST" style="margin-top: 1rem;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group">
                     <label for="webhook_url">Webhook URL</label>
                     <input type="url" id="webhook_url" name="webhook_url" value="{{ webhook_url }}" class="form-control"
@@ -143,6 +145,7 @@
                 </div>
             </div>
             <form action="{{ url_for('telegram_unlink') }}" method="POST" style="margin-top: 1rem;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-danger"
                     onclick="return confirm('Are you sure you want to unlink your Telegram account?')">
                     Unlink Account
@@ -166,6 +169,7 @@
             </ol>
 
             <form action="{{ url_for('telegram_link') }}" method="POST" class="link-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group">
                     <label for="link_code">Link Code</label>
                     <input type="text" id="link_code" name="link_code" class="form-control" placeholder="e.g. ABC12DEF"

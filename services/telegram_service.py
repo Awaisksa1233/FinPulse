@@ -40,9 +40,14 @@ def set_webhook(webhook_url: str) -> dict:
         return {'success': False, 'error': 'Bot token not configured'}
     
     try:
+        payload = {'url': webhook_url}
+        secret = os.environ.get('TELEGRAM_WEBHOOK_SECRET')
+        if secret:
+            payload['secret_token'] = secret
+            
         response = requests.post(
             f"{TELEGRAM_API_URL}/setWebhook",
-            json={'url': webhook_url},
+            json=payload,
             timeout=10
         )
         result = response.json()
