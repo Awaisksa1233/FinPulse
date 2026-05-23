@@ -1559,9 +1559,10 @@ html {
         font-size: 24px;
     }
 
+    .grid,
     .grid-2,
     .grid-3 {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr !important;
     }
 
     .account-grid {
@@ -2112,5 +2113,40 @@ html {
 
     .account-card:active {
         transform: scale(0.995);
+    }
+}
+
+/* Extra mobile refinements for small screen viewports (<480px) */
+@media (max-width: 480px) {
+    .transaction-item > div {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 12px !important;
+    }
+    
+    .transaction-item > div > div:last-child {
+        width: 100% !important;
+        justify-content: space-between !important;
+        display: flex !important;
+    }
+    
+    .transaction-item .transaction-amount {
+        font-size: 16px !important;
+        margin-left: 0 !important;
+    }
+    
+    form[action*="transfer"] {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+    
+    form[action*="transfer"] > div {
+        width: 100% !important;
+        flex: none !important;
+    }
+    
+    form[action*="transfer"] > button {
+        width: 100% !important;
+        margin-top: 12px !important;
     }
 }
