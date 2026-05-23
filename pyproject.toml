@@ -3,13 +3,16 @@ name = "finpulse"
 version = "0.1.0"
 description = "FinPulse Personal Financial Dashboard"
 dependencies = [
-    "Flask",
-    "Flask-SQLAlchemy",
-    "Flask-Cors",
-    "Flask-Login",
+    "flask",
+    "flask-sqlalchemy",
+    "flask-cors",
+    "flask-login",
     "python-dotenv",
     "groq",
-    "requests",
+    "httpx",
     "sqlalchemy-cloudflare-d1",
     "a2wsgi"
 ]
+
+[dependency-groups]
+dev = ["workers-py", "workers-runtime-sdk"]
