@@ -189,7 +189,8 @@ html {
     display: flex;
     flex-direction: column;
     position: fixed;
-    height: 100vh;
+    height: 100vh; /* fallback */
+    height: 100dvh;
     z-index: 50;
 }
 
@@ -220,6 +221,7 @@ html {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    overflow-y: auto;
 }
 
 .nav-link {
@@ -1507,7 +1509,8 @@ html {
         transition: transform 0.3s ease;
         z-index: 100;
         width: 280px;
-        height: 100vh;
+        height: 100vh; /* fallback */
+        height: 100dvh;
         top: 0;
         bottom: 0;
         border-right: 1px solid var(--gray-200);
