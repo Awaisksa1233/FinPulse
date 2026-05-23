@@ -42,12 +42,23 @@
 
 <body>
     <!-- PWA Loading Screen -->
-    <div id="pwaLoadingScreen" class="pwa-loading-screen">
+    <div id="pwaLoadingScreen" class="pwa-loading-screen active">
         <div class="pwa-loading-content">
             <img src="{{ url_for('static', filename='icons/icon-192.png') }}" alt="FinPulse" class="pwa-loading-logo">
             <div class="pwa-loading-spinner"></div>
         </div>
     </div>
+    <script>
+        // Check standalone PWA mode immediately to avoid flashing for non-PWA users
+        (function () {
+            const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
+                window.navigator.standalone === true;
+            if (!isPWA) {
+                // If not in PWA standalone mode, hide the loading screen immediately
+                document.getElementById('pwaLoadingScreen').classList.remove('active');
+            }
+        })();
+    </script>
 
     <!-- Mobile Header -->
     <header class="mobile-header">
@@ -341,11 +352,25 @@
     <script>
         (function () {
             const loadingScreen = document.getElementById('pwaLoadingScreen');
-            const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
-                window.navigator.standalone === true;
+            if (!loadingScreen) return;
+
+            // Helper to hide loading screen with a fade-out animation
+            function hideLoadingScreen() {
+                if (loadingScreen.classList.contains('active')) {
+                    loadingScreen.classList.add('fade-out');
+                    setTimeout(() => {
+                        loadingScreen.classList.remove('active');
+                        loadingScreen.classList.remove('fade-out');
+                    }, 250);
+                }
+            }
 
             // Show loading screen on internal link clicks
             document.addEventListener('click', function (e) {
+                const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
+                    window.navigator.standalone === true;
+                if (!isPWA) return;
+
                 const link = e.target.closest('a');
                 if (!link) return;
 
@@ -361,11 +386,16 @@
                 }
 
                 // Show loading screen
+                loadingScreen.classList.remove('fade-out');
                 loadingScreen.classList.add('active');
             });
 
             // Also show on form submissions (except AJAX forms)
             document.addEventListener('submit', function (e) {
+                const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
+                    window.navigator.standalone === true;
+                if (!isPWA) return;
+
                 const form = e.target;
                 // Skip forms that handle their own submission (AJAX forms)
                 if (form.hasAttribute('data-ajax') ||
@@ -373,18 +403,23 @@
                     form.hasAttribute('data-no-loading')) {
                     return;
                 }
+                loadingScreen.classList.remove('fade-out');
                 loadingScreen.classList.add('active');
             });
 
             // Hide loading screen when page loads (for back/forward navigation)
             window.addEventListener('pageshow', function () {
                 loadingScreen.classList.remove('active');
+                loadingScreen.classList.remove('fade-out');
             });
 
             // Ensure loading screen is hidden on initial load
             window.addEventListener('load', function () {
-                loadingScreen.classList.remove('active');
+                hideLoadingScreen();
             });
+
+            // Fallback: Hide loading screen after 2.5 seconds max, to prevent getting stuck
+            setTimeout(hideLoadingScreen, 2500);
         })();
     </script>
 
