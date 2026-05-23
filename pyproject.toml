@@ -1,0 +1,15 @@
+[project]
+name = "finpulse"
+version = "0.1.0"
+description = "FinPulse Personal Financial Dashboard"
+dependencies = [
+    "Flask",
+    "Flask-SQLAlchemy",
+    "Flask-Cors",
+    "Flask-Login",
+    "python-dotenv",
+    "groq",
+    "requests",
+    "sqlalchemy-cloudflare-d1",
+    "a2wsgi"
+]
