@@ -34,6 +34,17 @@ def load_user(user_id):
 # Create tables
 with app.app_context():
     db.create_all()
+    # Auto-migration: Check and add api_token column if it doesn't exist
+    try:
+        from sqlalchemy import text
+        columns_info = db.session.execute(text("PRAGMA table_info(users)")).fetchall()
+        columns = [row[1] for row in columns_info]
+        if 'api_token' not in columns:
+            db.session.execute(text("ALTER TABLE users ADD COLUMN api_token VARCHAR(64)"))
+            db.session.commit()
+            print("Auto-migration: Added api_token column to users table.")
+    except Exception as e:
+        print(f"Auto-migration warning: {e}")
 
 
 @app.before_request
