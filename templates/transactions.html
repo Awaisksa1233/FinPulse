@@ -28,14 +28,14 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Date</label>
-                        <input type="date" name="date" value="{{ today }}" required class="form-control">
+                        <input type="date" name="date" id="addDate" value="{{ today }}" required class="form-control">
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Category</label>
-                        <input type="text" name="category" list="categories" required class="form-control"
+                        <input type="text" name="category" id="addCategory" list="categories" required class="form-control"
                             placeholder="Select or type...">
                         <datalist id="categories">
                             {% if transaction_type == 'income' %}
@@ -63,6 +63,28 @@
                                 "%.2f"|format(acc.balance) }}</option>
                             {% endfor %}
                         </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Budget Month</label>
+                        <select name="budget_month" id="addBudgetMonth" class="form-control">
+                            <!-- Populated dynamically via JS -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <!-- Spacer -->
+                    </div>
+                </div>
+                <!-- Salary recommendation banner -->
+                <div id="addSalaryHelperAlert" style="display: none; margin-bottom: 16px; padding: 12px; background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 10px; color: var(--gray-800); font-size: 13px; line-height: 1.4;">
+                    <div style="display: flex; align-items: flex-start; gap: 8px;">
+                        <span style="font-size: 16px;">💡</span>
+                        <div>
+                            <strong>Salary Recommendation:</strong> If this is <span id="addSalaryMonthName" style="font-weight: 600;">May</span> salary, it is usually meant to fund next month's budget.
+                            <a href="#" id="addApplySalaryBtn" style="color: var(--primary); font-weight: 600; text-decoration: underline; margin-left: 4px; display: inline-block;">Show in June</a>
+                        </div>
                     </div>
                 </div>
 
@@ -115,14 +137,20 @@
             <div class="transaction-item" style="flex-direction: column; align-items: flex-start; gap: 8px;">
                 <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
                     <div>
-                        <p class="transaction-category">{{ t.category }}</p>
-                        <p class="transaction-meta">{{ t.date }} {% if t.description %}• {{ t.description }}{% endif %}
-                        </p>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <p class="transaction-category" style="margin: 0;">{{ t.category }}</p>
+                            {% if t.budget_month %}
+                            <span class="badge badge-budget-month" style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; background: rgba(99, 102, 241, 0.12); color: var(--primary);">
+                                📅 {{ t.budget_month.strftime('%b %Y') }} Budget
+                            </span>
+                            {% endif %}
+                        </div>
+                        <p class="transaction-meta" style="margin: 4px 0 0 0;">{{ t.date }} {% if t.description %}• {{ t.description }}{% endif %}</p>
                     </div>
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <span class="transaction-amount {{ t.type }}">{{ "%.2f"|format(t.amount) }} SAR</span>
                         <button
-                            onclick="openEditModal({{ t.id }}, '{{ t.date }}', {{ t.amount }}, '{{ t.category }}', {{ t.account_id }}, '{{ t.description or '' }}')"
+                            onclick="openEditModal({{ t.id }}, '{{ t.date }}', {{ t.amount }}, '{{ t.category }}', {{ t.account_id }}, '{{ t.description or '' }}', '{{ t.budget_month.strftime(\'%Y-%m-%d\') if t.budget_month else \'\' }}')"
                             class="btn btn-outline" style="padding: 6px 8px;" title="Edit">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2">
@@ -234,6 +262,27 @@
                     </select>
                 </div>
             </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Budget Month</label>
+                    <select name="budget_month" id="editBudgetMonth" class="form-control">
+                        <!-- Populated dynamically via JS -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <!-- Spacer -->
+                </div>
+            </div>
+            <!-- Salary recommendation banner for edit -->
+            <div id="editSalaryHelperAlert" style="display: none; margin-bottom: 16px; padding: 12px; background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 10px; color: var(--gray-800); font-size: 13px; line-height: 1.4;">
+                <div style="display: flex; align-items: flex-start; gap: 8px;">
+                    <span style="font-size: 16px;">💡</span>
+                    <div>
+                        <strong>Salary Recommendation:</strong> If this is <span id="editSalaryMonthName" style="font-weight: 600;">May</span> salary, it is usually meant to fund next month's budget.
+                        <a href="#" id="editApplySalaryBtn" style="color: var(--primary); font-weight: 600; text-decoration: underline; margin-left: 4px; display: inline-block;">Show in June</a>
+                    </div>
+                </div>
+            </div>
             <div class="form-group">
                 <label class="form-label">Description</label>
                 <input type="text" name="description" id="editDescription" class="form-control">
@@ -246,13 +295,132 @@
 
 {% block scripts %}
 <script>
-    function openEditModal(id, date, amount, category, accountId, description) {
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+    function getMonthLabel(year, month) {
+        return monthNames[month] + " " + year;
+    }
+
+    function formatDateVal(year, month) {
+        const m = String(month + 1).padStart(2, '0');
+        return `${year}-${m}-01`;
+    }
+
+    function populateBudgetMonths(dateStr, selectId, selectedVal) {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+        
+        // Save current selection if not explicitly provided
+        const prevVal = selectedVal || select.value;
+        
+        // Clear options
+        select.innerHTML = '';
+        
+        // Default option
+        const optDefault = document.createElement('option');
+        optDefault.value = '';
+        optDefault.text = 'Default (Same as Transaction Date)';
+        select.appendChild(optDefault);
+        
+        let baseDate = new Date();
+        if (dateStr) {
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                baseDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            }
+        }
+        
+        const year = baseDate.getFullYear();
+        const month = baseDate.getMonth(); // 0-indexed
+        
+        // Generate previous, current, next, and next-next months
+        const months = [];
+        // Previous month
+        let prevM = month - 1;
+        let prevY = year;
+        if (prevM < 0) { prevM = 11; prevY--; }
+        months.push({ val: formatDateVal(prevY, prevM), label: getMonthLabel(prevY, prevM) + " (Previous Month)" });
+        
+        // Current month
+        months.push({ val: formatDateVal(year, month), label: getMonthLabel(year, month) + " (Current Month)" });
+        
+        // Next month
+        let nextM = month + 1;
+        let nextY = year;
+        if (nextM > 11) { nextM = 0; nextY++; }
+        months.push({ val: formatDateVal(nextY, nextM), label: getMonthLabel(nextY, nextM) + " (Next Month)" });
+        
+        // Next next month
+        let nextNextM = month + 2;
+        let nextNextY = year;
+        if (nextNextM > 11) { nextNextM -= 12; nextNextY++; }
+        months.push({ val: formatDateVal(nextNextY, nextNextM), label: getMonthLabel(nextNextY, nextNextM) });
+        
+        months.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.val;
+            opt.text = m.label;
+            if (prevVal && prevVal.substring(0, 7) === m.val.substring(0, 7)) {
+                opt.selected = true;
+            }
+            select.appendChild(opt);
+        });
+    }
+
+    function checkSalaryHelper(type, dateStr, categoryVal, selectId, alertId, labelId, btnId) {
+        const isSalary = categoryVal.trim().toLowerCase() === 'salary';
+        const isIncome = type === 'income';
+        const alertEl = document.getElementById(alertId);
+        
+        if (isSalary && isIncome && dateStr) {
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                const baseDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                const year = baseDate.getFullYear();
+                const month = baseDate.getMonth();
+                
+                // Recommendation is to show in next month
+                let nextM = month + 1;
+                let nextY = year;
+                if (nextM > 11) { nextM = 0; nextY++; }
+                
+                const currentMonthName = monthNames[month];
+                const nextMonthName = monthNames[nextM];
+                const nextMonthVal = formatDateVal(nextY, nextM);
+                
+                document.getElementById(labelId).innerText = currentMonthName;
+                const btn = document.getElementById(btnId);
+                btn.innerText = `Show in ${nextMonthName} ${nextY}`;
+                
+                // On click, set select value
+                btn.onclick = function(e) {
+                    e.preventDefault();
+                    const select = document.getElementById(selectId);
+                    select.value = nextMonthVal;
+                };
+                
+                alertEl.style.display = 'block';
+                return;
+            }
+        }
+        if (alertEl) alertEl.style.display = 'none';
+    }
+
+    // Modal control functions
+    function openEditModal(id, date, amount, category, accountId, description, budgetMonth) {
         document.getElementById('editId').value = id;
         document.getElementById('editDate').value = date;
         document.getElementById('editAmount').value = amount;
         document.getElementById('editCategory').value = category;
         document.getElementById('editAccountId').value = accountId;
         document.getElementById('editDescription').value = description;
+        
+        // Populate budget month dropdown for edit modal
+        populateBudgetMonths(date, 'editBudgetMonth', budgetMonth);
+        
+        // Check salary recommendation
+        checkSalaryHelper('{{ transaction_type }}', date, category, 'editBudgetMonth', 'editSalaryHelperAlert', 'editSalaryMonthName', 'editApplySalaryBtn');
+        
         document.getElementById('editModal').style.display = 'flex';
     }
 
@@ -263,5 +431,38 @@
     document.getElementById('editModal').addEventListener('click', (e) => {
         if (e.target.id === 'editModal') closeEditModal();
     });
+
+    // Add form event listeners
+    const addDateInput = document.getElementById('addDate');
+    const addCategoryInput = document.getElementById('addCategory');
+    
+    if (addDateInput && addCategoryInput) {
+        // Initial setup for Add Form
+        populateBudgetMonths(addDateInput.value, 'addBudgetMonth', '');
+        
+        addDateInput.addEventListener('change', () => {
+            populateBudgetMonths(addDateInput.value, 'addBudgetMonth');
+            checkSalaryHelper('{{ transaction_type }}', addDateInput.value, addCategoryInput.value, 'addBudgetMonth', 'addSalaryHelperAlert', 'addSalaryMonthName', 'addApplySalaryBtn');
+        });
+        
+        addCategoryInput.addEventListener('input', () => {
+            checkSalaryHelper('{{ transaction_type }}', addDateInput.value, addCategoryInput.value, 'addBudgetMonth', 'addSalaryHelperAlert', 'addSalaryMonthName', 'addApplySalaryBtn');
+        });
+    }
+
+    // Edit form event listeners
+    const editDateInput = document.getElementById('editDate');
+    const editCategoryInput = document.getElementById('editCategory');
+    
+    if (editDateInput && editCategoryInput) {
+        editDateInput.addEventListener('change', () => {
+            populateBudgetMonths(editDateInput.value, 'editBudgetMonth');
+            checkSalaryHelper('{{ transaction_type }}', editDateInput.value, editCategoryInput.value, 'editBudgetMonth', 'editSalaryHelperAlert', 'editSalaryMonthName', 'editApplySalaryBtn');
+        });
+        
+        editCategoryInput.addEventListener('input', () => {
+            checkSalaryHelper('{{ transaction_type }}', editDateInput.value, editCategoryInput.value, 'editBudgetMonth', 'editSalaryHelperAlert', 'editSalaryMonthName', 'editApplySalaryBtn');
+        });
+    }
 </script>
 {% endblock %}

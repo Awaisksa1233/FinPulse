@@ -64,6 +64,7 @@ class Transaction(db.Model):
     description = db.Column(db.String(255), default='')
     is_recurring = db.Column(db.Boolean, default=False)
     recurring_frequency = db.Column(db.String(20), nullable=True)  # weekly, monthly
+    budget_month = db.Column(db.Date, nullable=True)  # First day of the attributed month
     
     to_account = db.relationship('Account', foreign_keys=[to_account_id])
     
@@ -78,7 +79,8 @@ class Transaction(db.Model):
             'to_account_id': self.to_account_id,
             'description': self.description,
             'is_recurring': self.is_recurring,
-            'recurring_frequency': self.recurring_frequency
+            'recurring_frequency': self.recurring_frequency,
+            'budget_month': self.budget_month.isoformat() if self.budget_month else None
         }
 
 

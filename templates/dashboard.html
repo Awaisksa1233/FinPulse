@@ -162,14 +162,19 @@
                         {% endif %}
                     </div>
                     <div>
-                        <p class="transaction-category">
+                        <p class="transaction-category" style="display: flex; align-items: center; gap: 6px; margin: 0;">
                             {{ t.category }}
                             {% if t.is_recurring %}
                             <span
-                                style="font-size: 10px; background: var(--primary-light); color: var(--primary); padding: 2px 6px; border-radius: 4px; margin-left: 4px;">🔄</span>
+                                style="font-size: 10px; background: var(--primary-light); color: var(--primary); padding: 2px 6px; border-radius: 4px;">🔄</span>
+                            {% endif %}
+                            {% if t.budget_month %}
+                            <span class="badge badge-budget-month" style="font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 20px; background: rgba(99, 102, 241, 0.12); color: var(--primary); white-space: nowrap;">
+                                📅 {{ t.budget_month.strftime('%b %Y') }} Budget
+                            </span>
                             {% endif %}
                         </p>
-                        <p class="transaction-meta">{{ t.date }} • {{ t.description or 'No description' }}</p>
+                        <p class="transaction-meta" style="margin: 4px 0 0 0;">{{ t.date }} • {{ t.description or 'No description' }}</p>
                     </div>
                 </div>
                 <span class="transaction-amount {{ t.type }}">

@@ -43,6 +43,13 @@ with app.app_context():
             db.session.execute(text("ALTER TABLE users ADD COLUMN api_token VARCHAR(64)"))
             db.session.commit()
             print("Auto-migration: Added api_token column to users table.")
+            
+        columns_info_t = db.session.execute(text("PRAGMA table_info(transactions)")).fetchall()
+        columns_t = [row[1] for row in columns_info_t]
+        if 'budget_month' not in columns_t:
+            db.session.execute(text("ALTER TABLE transactions ADD COLUMN budget_month DATE"))
+            db.session.commit()
+            print("Auto-migration: Added budget_month column to transactions table.")
     except Exception as e:
         print(f"Auto-migration warning: {e}")
 
@@ -239,7 +246,10 @@ def dashboard():
     today = date.today()
     month_start = date(today.year, today.month, 1)
     
-    transactions = Transaction.query.filter(Transaction.user_id == current_user.id, Transaction.date >= month_start).all()
+    transactions = Transaction.query.filter(
+        Transaction.user_id == current_user.id,
+        db.func.coalesce(Transaction.budget_month, Transaction.date) >= month_start
+    ).all()
     income_this_month = sum(t.amount for t in transactions if t.type == 'income')
     expense_this_month = sum(t.amount for t in transactions if t.type == 'expense')
     
@@ -308,7 +318,10 @@ def get_ai_summary():
     
     today = date.today()
     month_start = date(today.year, today.month, 1)
-    transactions = [t.to_dict() for t in Transaction.query.filter(Transaction.user_id == current_user.id, Transaction.date >= month_start).all()]
+    transactions = [t.to_dict() for t in Transaction.query.filter(
+        Transaction.user_id == current_user.id,
+        db.func.coalesce(Transaction.budget_month, Transaction.date) >= month_start
+    ).all()]
     loans = [l.to_dict() for l in Loan.query.filter_by(user_id=current_user.id, status='active').all()]
     
     summary = generate_account_summary(accounts, transactions, loans)
@@ -326,11 +339,12 @@ def get_story_report():
     month = int(request.args.get('month', date.today().month))
     
     # Get current period transactions
+    month_date = db.func.coalesce(Transaction.budget_month, Transaction.date)
     if timeframe == 'monthly':
         transactions = Transaction.query.filter(
             Transaction.user_id == current_user.id,
-            db.extract('year', Transaction.date) == year,
-            db.extract('month', Transaction.date) == month
+            db.extract('year', month_date) == year,
+            db.extract('month', month_date) == month
         ).all()
         timeframe_display = f"{datetime(year, month, 1).strftime('%B %Y')}"
         
@@ -339,13 +353,13 @@ def get_story_report():
         prev_year = year if month > 1 else year - 1
         prev_transactions = Transaction.query.filter(
             Transaction.user_id == current_user.id,
-            db.extract('year', Transaction.date) == prev_year,
-            db.extract('month', Transaction.date) == prev_month
+            db.extract('year', month_date) == prev_year,
+            db.extract('month', month_date) == prev_month
         ).all()
     else:
         transactions = Transaction.query.filter(
             Transaction.user_id == current_user.id,
-            db.extract('year', Transaction.date) == year
+            db.extract('year', month_date) == year
         ).all()
         timeframe_display = f"Year {year}"
         prev_transactions = []
@@ -610,6 +624,15 @@ def api_add_transaction():
             t_date = date.today()
     else:
         t_date = date.today()
+        
+    # Parse budget_month
+    budget_month_str = data.get('budget_month')
+    budget_month = None
+    if budget_month_str:
+        try:
+            budget_month = datetime.strptime(budget_month_str, '%Y-%m-%d').date()
+        except:
+            pass
     
     # Find account
     account_name = data.get('account')
@@ -630,7 +653,8 @@ def api_add_transaction():
         category=category,
         account_id=account.id,
         description=description,
-        is_recurring=False
+        is_recurring=False,
+        budget_month=budget_month
     )
     db.session.add(transaction)
     
@@ -683,11 +707,12 @@ def reports():
     month = int(request.args.get('month', date.today().month))
     
     # Filter transactions by current user
+    month_date = db.func.coalesce(Transaction.budget_month, Transaction.date)
     if timeframe == 'monthly':
         transactions = Transaction.query.filter(
             Transaction.user_id == current_user.id,
-            db.extract('year', Transaction.date) == year,
-            db.extract('month', Transaction.date) == month
+            db.extract('year', month_date) == year,
+            db.extract('month', month_date) == month
         ).all()
         date_display = datetime(year, month, 1).strftime('%B %Y')
         
@@ -701,7 +726,7 @@ def reports():
     else:
         transactions = Transaction.query.filter(
             Transaction.user_id == current_user.id,
-            db.extract('year', Transaction.date) == year
+            db.extract('year', month_date) == year
         ).all()
         date_display = str(year)
         prev_url = url_for('reports', timeframe='yearly', year=year-1)
@@ -809,6 +834,9 @@ def add_transaction():
     is_recurring = request.form.get('is_recurring') == 'on'
     recurring_frequency = request.form.get('recurring_frequency') if is_recurring else None
     
+    budget_month_str = request.form.get('budget_month')
+    budget_month = datetime.strptime(budget_month_str, '%Y-%m-%d').date() if budget_month_str else None
+    
     # Create transaction
     transaction = Transaction(
         user_id=current_user.id,
@@ -819,7 +847,8 @@ def add_transaction():
         account_id=account_id,
         description=description,
         is_recurring=is_recurring,
-        recurring_frequency=recurring_frequency
+        recurring_frequency=recurring_frequency,
+        budget_month=budget_month
     )
     db.session.add(transaction)
     
@@ -858,6 +887,9 @@ def edit_transaction():
     new_account_id = int(request.form.get('account_id'))
     new_description = request.form.get('description', '')
     
+    new_budget_month_str = request.form.get('budget_month')
+    new_budget_month = datetime.strptime(new_budget_month_str, '%Y-%m-%d').date() if new_budget_month_str else None
+    
     # Reverse old balance change
     old_account = db.session.get(Account, old_account_id)
     if old_account:
@@ -888,6 +920,7 @@ def edit_transaction():
     transaction.category = new_category
     transaction.account_id = new_account_id
     transaction.description = new_description
+    transaction.budget_month = new_budget_month
     
     db.session.commit()
     flash('Transaction updated successfully!', 'success')
@@ -1040,7 +1073,7 @@ def budgets():
     # Calculate spending per category this month
     transactions = Transaction.query.filter(
         Transaction.user_id == current_user.id,
-        Transaction.date >= month_start,
+        db.func.coalesce(Transaction.budget_month, Transaction.date) >= month_start,
         Transaction.type == 'expense'
     ).all()
     
@@ -1182,9 +1215,10 @@ def get_budget_suggestions():
     # Get last 3 months of transactions
     three_months_ago = today - relativedelta(months=3)
     
+    month_date = db.func.coalesce(Transaction.budget_month, Transaction.date)
     transactions = Transaction.query.filter(
         Transaction.user_id == current_user.id,
-        Transaction.date >= three_months_ago,
+        month_date >= three_months_ago,
         Transaction.type == 'expense'
     ).all()
     
@@ -1200,7 +1234,7 @@ def get_budget_suggestions():
     # Get income total (last 3 months average)
     income_transactions = Transaction.query.filter(
         Transaction.user_id == current_user.id,
-        Transaction.date >= three_months_ago,
+        month_date >= three_months_ago,
         Transaction.type == 'income'
     ).all()
     income_total = sum(t.amount for t in income_transactions) / 3
@@ -1627,7 +1661,7 @@ def chat_api():
     month_start = date(today.year, today.month, 1)
     transactions = [t.to_dict() for t in Transaction.query.filter(
         Transaction.user_id == current_user.id,
-        Transaction.date >= month_start
+        db.func.coalesce(Transaction.budget_month, Transaction.date) >= month_start
     ).order_by(Transaction.date.desc()).all()]
     
     # Get active loans for AI analysis
@@ -1952,7 +1986,7 @@ def telegram_webhook():
     month_start = date(today.year, today.month, 1)
     transactions = [t.to_dict() for t in Transaction.query.filter(
         Transaction.user_id == user_id,
-        Transaction.date >= month_start
+        db.func.coalesce(Transaction.budget_month, Transaction.date) >= month_start
     ).order_by(Transaction.date.desc()).all()]
     loans = [l.to_dict() for l in Loan.query.filter_by(user_id=user_id, status='active').all()]
     
