@@ -12,7 +12,9 @@ dependencies = [
     "httpx",
     "sqlalchemy-cloudflare-d1",
     "flask-wtf",
-    "a2wsgi"
+    "a2wsgi",
+    "pymysql",
+    "Flask-Migrate"
 ]
 
 [dependency-groups]

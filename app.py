@@ -2,6 +2,7 @@ import os
 from datetime import datetime, date, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, abort
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from flask_cors import CORS
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from dotenv import load_dotenv
@@ -21,6 +22,7 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 from models import db, User, Account, Transaction, Loan, ChatMessage
 db.init_app(app)
+migrate = Migrate(app, db)
 
 # Flask-Login setup
 login_manager = LoginManager()
@@ -32,27 +34,8 @@ login_manager.login_message = 'Please log in to access this page.'
 def load_user(user_id):
     return db.session.get(User, int(user_id))
 
-# Create tables
-with app.app_context():
-    db.create_all()
-    # Auto-migration: Check and add api_token column if it doesn't exist
-    try:
-        from sqlalchemy import text
-        columns_info = db.session.execute(text("PRAGMA table_info(users)")).fetchall()
-        columns = [row[1] for row in columns_info]
-        if 'api_token' not in columns:
-            db.session.execute(text("ALTER TABLE users ADD COLUMN api_token VARCHAR(64)"))
-            db.session.commit()
-            print("Auto-migration: Added api_token column to users table.")
-            
-        columns_info_t = db.session.execute(text("PRAGMA table_info(transactions)")).fetchall()
-        columns_t = [row[1] for row in columns_info_t]
-        if 'budget_month' not in columns_t:
-            db.session.execute(text("ALTER TABLE transactions ADD COLUMN budget_month DATE"))
-            db.session.commit()
-            print("Auto-migration: Added budget_month column to transactions table.")
-    except Exception as e:
-        print(f"Auto-migration warning: {e}")
+# Note: Database tables are now managed by Flask-Migrate.
+# Run 'flask db upgrade' to apply migrations.
 
 
 @app.before_request
