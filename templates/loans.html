@@ -499,14 +499,6 @@
             document.getElementById('aiSummary').innerHTML = 'Unable to load AI insights.';
         });
 
-    function openModal(id) {
-        document.getElementById(id).style.display = 'flex';
-    }
-
-    function closeModal(id) {
-        document.getElementById(id).style.display = 'none';
-    }
-
     function toggleAccountSelect() {
         const checkbox = document.getElementById('adjustBalance');
         const div = document.getElementById('accountSelectDiv');
@@ -539,11 +531,5 @@
 
         openModal('addEntryModal');
     }
-
-    document.querySelectorAll('.modal-backdrop').forEach(modal => {
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) closeModal(modal.id);
-        });
-    });
 </script>
-{% endblock %}
+{% endblock %}

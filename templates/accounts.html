@@ -245,14 +245,6 @@
 
 {% block scripts %}
 <script>
-    function openModal(id) {
-        document.getElementById(id).style.display = 'flex';
-    }
-
-    function closeModal(id) {
-        document.getElementById(id).style.display = 'none';
-    }
-
     function editAccount(id, name, type, currency, balance) {
         document.getElementById('editAccountId').value = id;
         document.getElementById('editAccountName').value = name;
@@ -261,12 +253,6 @@
         document.getElementById('editAccountBalance').value = balance;
         openModal('editAccountModal');
     }
-
-    // Close modal on backdrop click
-    document.querySelectorAll('.modal-backdrop').forEach(modal => {
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) closeModal(modal.id);
-        });
-    });
 </script>
 {% endblock %}
+

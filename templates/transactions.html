@@ -424,16 +424,12 @@
         // Check salary recommendation
         checkSalaryHelper('{{ transaction_type }}', date, category, 'editBudgetMonth', 'editSalaryHelperAlert', 'editSalaryMonthName', 'editApplySalaryBtn');
         
-        document.getElementById('editModal').style.display = 'flex';
+        openModal('editModal');
     }
 
     function closeEditModal() {
-        document.getElementById('editModal').style.display = 'none';
+        closeModal('editModal');
     }
-
-    document.getElementById('editModal').addEventListener('click', (e) => {
-        if (e.target.id === 'editModal') closeEditModal();
-    });
 
     // Add form event listeners
     const addDateInput = document.getElementById('addDate');

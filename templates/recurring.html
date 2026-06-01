@@ -237,11 +237,11 @@
 {% block scripts %}
 <script>
     function openAddModal() {
-        document.getElementById('addModal').style.display = 'flex';
+        openModal('addModal');
     }
 
     function closeAddModal() {
-        document.getElementById('addModal').style.display = 'none';
+        closeModal('addModal');
     }
 
     function updateTypeStyles() {
@@ -256,10 +256,5 @@
             btn.classList.remove('btn-success');
         }
     }
-
-    // Close modal when clicking backdrop
-    document.getElementById('addModal').addEventListener('click', (e) => {
-        if (e.target.id === 'addModal') closeAddModal();
-    });
 </script>
-{% endblock %}
+{% endblock %}

@@ -508,6 +508,82 @@
     </script>
 
     {% block scripts %}{% endblock %}
+
+    <!-- PWA Modal Scroll Lock & Touch Fix -->
+    <script>
+        // ---- Modal scroll-lock helpers (iOS PWA safe) ----
+        let _scrollY = 0;
+
+        function openModal(id) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            // Save current scroll position
+            _scrollY = window.scrollY || window.pageYOffset;
+            document.documentElement.style.setProperty('--scroll-y', `-${_scrollY}px`);
+            document.body.classList.add('modal-open');
+            modal.style.display = 'flex';
+            // Prevent backdrop touchmove from scrolling page
+            modal.addEventListener('touchmove', _stopPropagation, { passive: false });
+            // Allow inner modal content to scroll
+            const inner = modal.querySelector('.modal');
+            if (inner) inner.addEventListener('touchmove', _allowScroll, { passive: true });
+            // Animate in
+            requestAnimationFrame(() => modal.style.opacity = '1');
+        }
+
+        function closeModal(id) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            modal.style.display = 'none';
+            document.body.classList.remove('modal-open');
+            document.documentElement.style.removeProperty('--scroll-y');
+            // Restore scroll position
+            window.scrollTo(0, _scrollY);
+            modal.removeEventListener('touchmove', _stopPropagation);
+            const inner = modal.querySelector('.modal');
+            if (inner) inner.removeEventListener('touchmove', _allowScroll);
+        }
+
+        function _stopPropagation(e) {
+            e.preventDefault();
+        }
+        function _allowScroll(e) {
+            e.stopPropagation();
+        }
+
+        // Close modal when clicking the backdrop (outside the .modal box)
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal-backdrop')) {
+                // Find the backdrop id and close it
+                const id = e.target.id;
+                if (id) closeModal(id);
+            }
+        });
+
+        // Also support Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal-backdrop[id]').forEach(function(el) {
+                    if (el.style.display !== 'none' && el.style.display !== '') {
+                        closeModal(el.id);
+                    }
+                });
+            }
+        });
+
+        // Patch any showModal / hideModal style inline calls at page load
+        // Support both the old inline onclick pattern and new openModal pattern
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto-hide toasts
+            document.querySelectorAll('.toast').forEach(function(toast) {
+                setTimeout(function() {
+                    toast.style.animation = 'toastSlideOut 0.35s ease forwards';
+                    setTimeout(function() { toast.remove(); }, 400);
+                }, 4000);
+            });
+        });
+    </script>
+
 </body>
 
 </html>
