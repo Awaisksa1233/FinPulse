@@ -8,19 +8,29 @@ import secrets
 import requests
 from datetime import datetime
 
+# NOTE: Do NOT cache the token/URL at module level - they can be set after import.
+def _get_api_url():
+    """Get Telegram API URL dynamically (reads env each call)."""
+    token = os.getenv('TELEGRAM_BOT_TOKEN')
+    if not token:
+        return None
+    return f"https://api.telegram.org/bot{token}"
+
+# Keep these for backward compatibility (e.g. telegram_save_token sets them)
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
-TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}" if TELEGRAM_BOT_TOKEN else None
+TELEGRAM_API_URL = _get_api_url()
 
 
 def send_telegram_message(chat_id: int, text: str, parse_mode: str = 'Markdown') -> bool:
     """Send a message to a Telegram chat."""
-    if not TELEGRAM_API_URL:
+    api_url = _get_api_url()
+    if not api_url:
         print("Telegram bot token not configured")
         return False
     
     try:
         response = requests.post(
-            f"{TELEGRAM_API_URL}/sendMessage",
+            f"{api_url}/sendMessage",
             json={
                 'chat_id': chat_id,
                 'text': text,
@@ -28,7 +38,18 @@ def send_telegram_message(chat_id: int, text: str, parse_mode: str = 'Markdown')
             },
             timeout=10
         )
-        return response.status_code == 200
+        if response.status_code == 200:
+            return True
+        # If markdown parsing fails, retry as plain text
+        if response.status_code == 400 and parse_mode != '':
+            plain_response = requests.post(
+                f"{api_url}/sendMessage",
+                json={'chat_id': chat_id, 'text': text},
+                timeout=10
+            )
+            return plain_response.status_code == 200
+        print(f"Telegram send failed: {response.status_code} {response.text[:200]}")
+        return False
     except Exception as e:
         print(f"Error sending Telegram message: {e}")
         return False
@@ -36,7 +57,8 @@ def send_telegram_message(chat_id: int, text: str, parse_mode: str = 'Markdown')
 
 def set_webhook(webhook_url: str) -> dict:
     """Set the webhook URL for the Telegram bot."""
-    if not TELEGRAM_API_URL:
+    api_url = _get_api_url()
+    if not api_url:
         return {'success': False, 'error': 'Bot token not configured'}
     
     try:
@@ -46,7 +68,7 @@ def set_webhook(webhook_url: str) -> dict:
             payload['secret_token'] = secret
             
         response = requests.post(
-            f"{TELEGRAM_API_URL}/setWebhook",
+            f"{api_url}/setWebhook",
             json=payload,
             timeout=10
         )
@@ -61,11 +83,12 @@ def set_webhook(webhook_url: str) -> dict:
 
 def get_webhook_info() -> dict:
     """Get current webhook configuration."""
-    if not TELEGRAM_API_URL:
+    api_url = _get_api_url()
+    if not api_url:
         return {'url': None, 'error': 'Bot token not configured'}
     
     try:
-        response = requests.get(f"{TELEGRAM_API_URL}/getWebhookInfo", timeout=10)
+        response = requests.get(f"{api_url}/getWebhookInfo", timeout=10)
         result = response.json()
         if result.get('ok'):
             return {
@@ -81,11 +104,12 @@ def get_webhook_info() -> dict:
 
 def get_bot_info() -> dict:
     """Get bot information."""
-    if not TELEGRAM_API_URL:
+    api_url = _get_api_url()
+    if not api_url:
         return {'success': False, 'error': 'Bot token not configured'}
     
     try:
-        response = requests.get(f"{TELEGRAM_API_URL}/getMe", timeout=10)
+        response = requests.get(f"{api_url}/getMe", timeout=10)
         result = response.json()
         if result.get('ok'):
             return {
