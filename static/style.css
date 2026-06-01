@@ -1169,20 +1169,17 @@ body.modal-open {
 /* Modal */
 .modal-backdrop {
     position: fixed;
-    /* Use inset with safe area fallback for iOS PWA */
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
     background: rgba(15, 23, 42, 0.5);
-    /* Avoid backdrop-filter on iOS PWA - causes touch event issues */
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 2000;
     padding: 20px;
     animation: fadeIn 0.2s ease;
-    /* Prevent background from scrolling through */
     overscroll-behavior: none;
     -webkit-overflow-scrolling: auto;
     touch-action: none;
@@ -1961,54 +1958,58 @@ body.modal-open {
     .modal-backdrop {
         padding: 0;
         align-items: flex-end;
-        /* Ensure it sits above bottom nav */
-        padding-bottom: 0;
     }
 
     .modal {
         max-width: 100%;
         width: 100%;
         border-radius: 20px 20px 0 0;
-        /* Account for safe area at bottom */
-        max-height: calc(92dvh - env(safe-area-inset-bottom, 0px));
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-        padding: 20px;
-        padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+        max-height: 92dvh;
+        /* Flex column: drag handle + header fixed, form scrolls */
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;   /* container does NOT scroll */
+        padding: 0;
         animation: slideUpModal 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
-    @keyframes slideUpModal {
-        from {
-            transform: translateY(100%);
-        }
-
-        to {
-            transform: translateY(0);
-        }
-    }
-
-    .modal-header {
-        margin-bottom: 16px;
-        position: sticky;
-        top: 0;
-        background: white;
-        z-index: 1;
-        padding-top: 4px;
-        padding-bottom: 12px;
-        border-bottom: 1px solid var(--gray-100);
-        /* Drag handle for bottom sheet feel */
-    }
-
-    /* Bottom sheet drag handle */
+    /* Drag handle — always visible, never scrolls away */
     .modal::before {
         content: '';
         display: block;
         width: 36px;
         height: 4px;
+        flex-shrink: 0;
         background: var(--gray-300);
         border-radius: 2px;
-        margin: 0 auto 16px;
+        margin: 12px auto 8px;
+    }
+
+    /* Header sticks at top, never scrolls */
+    .modal-header {
+        flex-shrink: 0;
+        padding: 0 20px 12px;
+        margin-bottom: 0;
+        position: static !important;   /* no sticky needed - already pinned by flex */
+        border-bottom: 1px solid var(--gray-100);
+        background: white;
+    }
+
+    /* Form = the only scrollable region */
+    .modal > form,
+    .modal > .modal-body {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        touch-action: pan-y;
+        padding: 16px 20px;
+        padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    }
+
+    @keyframes slideUpModal {
+        from { transform: translateY(100%); }
+        to   { transform: translateY(0); }
     }
 
     .modal-title {

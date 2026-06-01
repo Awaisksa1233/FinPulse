@@ -1,7 +1,7 @@
 // FinPulse Service Worker - PWA Support
-const CACHE_NAME = 'finpulse-v1';
-const STATIC_CACHE = 'finpulse-static-v1';
-const DYNAMIC_CACHE = 'finpulse-dynamic-v1';
+const CACHE_NAME = 'finpulse-v2';
+const STATIC_CACHE = 'finpulse-static-v2';
+const DYNAMIC_CACHE = 'finpulse-dynamic-v2';
 
 // Assets to cache immediately on install
 const STATIC_ASSETS = [
