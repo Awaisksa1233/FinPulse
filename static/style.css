@@ -63,6 +63,10 @@ body.modal-open {
     top: var(--scroll-y, 0);
 }
 
+body.modal-open .bottom-nav {
+    display: none !important;
+}
+
 /* PWA Loading Screen */
 .pwa-loading-screen {
     position: fixed;
