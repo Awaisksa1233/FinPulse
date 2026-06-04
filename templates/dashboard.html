@@ -1,273 +1,270 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
 
-{% block content %}
-<header class="page-header">
-    <h2 class="page-title">Financial Overview</h2>
-    <p class="page-subtitle">Welcome back, here's your summary.</p>
-</header>
-
-<!-- AI Summary Card -->
-<div class="card"
-    style="margin-bottom: 24px; background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%); color: white; border-color: transparent;">
-    <div style="display: flex; align-items: flex-start; gap: 12px;">
-        <div style="background: rgba(255,255,255,0.2); padding: 10px; border-radius: 12px;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-            </svg>
+{% block layout %}
+<!-- Page Banner -->
+<div class="page-banner">
+    <div class="page-banner-inner">
+        <div>
+            <h1 class="page-title">Good day, {{ current_user.name.split()[0] }} 👋</h1>
+            <p class="page-subtitle">Here's your financial snapshot for today.</p>
         </div>
-        <div style="flex: 1;">
-            <p style="font-weight: 600; margin-bottom: 8px; opacity: 0.9;">AI Financial Insights</p>
-            <div id="aiSummary">
-                <!-- Skeleton Loading -->
-                <div class="ai-summary-skeleton">
-                    <div class="skeleton skeleton-text"
-                        style="background: rgba(255,255,255,0.3); height: 14px; width: 90%;"></div>
-                    <div class="skeleton skeleton-text"
-                        style="background: rgba(255,255,255,0.3); height: 14px; width: 75%;"></div>
-                    <div class="skeleton skeleton-text"
-                        style="background: rgba(255,255,255,0.3); height: 14px; width: 60%;"></div>
-                </div>
-            </div>
+        <a href="{{ url_for('expenses') }}" class="btn btn-primary btn-sm" style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: white;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Expense
+        </a>
+    </div>
+</div>
+
+<div class="content-wrapper">
+
+<!-- Hero Balance Card -->
+<div class="hero-balance-card">
+    <div class="hero-balance-inner">
+        <p class="hero-balance-label">Total Net Worth</p>
+        <h2 class="hero-balance-amount">{{ "%.2f"|format(total_balance) }} <span style="font-size:24px;font-weight:600;opacity:.5;">SAR</span></h2>
+        <div class="hero-balance-meta">
+            <span class="hero-balance-badge">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                {{ accounts|length }} account{{ 's' if accounts|length != 1 else '' }}
+            </span>
+            <span class="hero-balance-badge">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Updated now
+            </span>
         </div>
     </div>
 </div>
 
-<!-- Summary Cards -->
-<div class="summary-grid">
-    <div class="summary-card primary">
-        <p class="summary-label">Total Balance</p>
-        <h3 class="summary-value">{{ "%.2f"|format(total_balance) }} SAR</h3>
-        <div
-            style="margin-top: 16px; display: flex; align-items: center; gap: 6px; font-size: 12px; background: rgba(255,255,255,0.2); width: fit-content; padding: 4px 10px; border-radius: 8px;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="2" y="5" width="20" height="14" rx="2" />
-                <line x1="2" y1="10" x2="22" y2="10" />
+<!-- Summary Row -->
+<div class="summary-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); margin-bottom: 24px;">
+    <div class="summary-card success-card">
+        <p class="summary-label">Monthly Income</p>
+        <h3 class="summary-value">{{ "%.2f"|format(income_this_month) }} SAR</h3>
+        <div class="summary-trend positive">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
+            This month
+        </div>
+    </div>
+    <div class="summary-card danger-card">
+        <p class="summary-label">Monthly Expenses</p>
+        <h3 class="summary-value">{{ "%.2f"|format(expense_this_month) }} SAR</h3>
+        <div class="summary-trend negative">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/></svg>
+            This month
+        </div>
+    </div>
+    <div class="summary-card accent">
+        <p class="summary-label">Net Savings</p>
+        <h3 class="summary-value">{{ "%.2f"|format(income_this_month - expense_this_month) }} SAR</h3>
+        <div class="summary-trend" style="background:rgba(255,255,255,.15); color:rgba(255,255,255,.85);">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Income – Expenses
+        </div>
+    </div>
+</div>
+
+<!-- AI Insights -->
+<div class="card card-accent-blue" style="margin-bottom: 24px;">
+    <div style="display:flex; align-items:flex-start; gap:14px;">
+        <div style="background:linear-gradient(135deg,#2563eb,#0d9488); padding:10px; border-radius:10px; flex-shrink:0;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
             </svg>
-            Across {{ accounts|length }} accounts
         </div>
-    </div>
-
-    <div class="summary-card white">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-            <p class="summary-label">Monthly Income</p>
-            <div class="summary-icon success">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-                </svg>
+        <div style="flex:1;">
+            <p style="font-weight:700; font-size:13px; color:var(--text); margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">AI Financial Insights</p>
+            <div id="aiSummary">
+                <div class="ai-summary-skeleton">
+                    <div class="skeleton skeleton-text" style="width:92%;"></div>
+                    <div class="skeleton skeleton-text" style="width:76%;"></div>
+                    <div class="skeleton skeleton-text" style="width:58%;"></div>
+                </div>
             </div>
         </div>
-        <h3 class="summary-value" style="color: var(--gray-800);">{{ "%.2f"|format(income_this_month) }} SAR</h3>
-    </div>
-
-    <div class="summary-card white">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-            <p class="summary-label">Monthly Expenses</p>
-            <div class="summary-icon danger">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
-                </svg>
-            </div>
-        </div>
-        <h3 class="summary-value" style="color: var(--gray-800);">{{ "%.2f"|format(expense_this_month) }} SAR</h3>
     </div>
 </div>
 
 <!-- Budget Alerts -->
 {% if budget_alerts %}
-<div class="card budget-alerts-card"
-    style="margin-bottom: 24px; background: linear-gradient(135deg, #d97706 0%, #dc2626 100%); color: white; border-color: transparent;">
-    <div style="display: flex; align-items: flex-start; gap: 12px;">
-        <div style="background: rgba(255,255,255,0.2); padding: 10px; border-radius: 12px;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                <line x1="12" y1="9" x2="12" y2="13" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
+<div class="card" style="margin-bottom:24px; background:linear-gradient(135deg,#7f1d1d,#dc2626); border-color:transparent; color:white;">
+    <div style="display:flex; align-items:flex-start; gap:12px;">
+        <div style="background:rgba(255,255,255,.18); padding:10px; border-radius:10px; flex-shrink:0;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
             </svg>
         </div>
-        <div style="flex: 1;">
-            <p style="font-weight: 600; margin-bottom: 8px;">Budget Alerts</p>
+        <div style="flex:1;">
+            <p style="font-weight:700; font-size:13px; margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;">⚠ Budget Alerts</p>
             {% for alert in budget_alerts %}
-            <p style="font-size: 14px; opacity: 0.95; margin-bottom: 4px;">{{ alert }}</p>
+            <p style="font-size:13.5px; opacity:.92; margin-bottom:3px;">{{ alert }}</p>
             {% endfor %}
-            <a href="{{ url_for('budgets') }}"
-                style="display: inline-block; margin-top: 8px; font-size: 13px; color: white; text-decoration: underline;">Manage
-                Budgets →</a>
+            <a href="{{ url_for('budgets') }}" style="display:inline-block; margin-top:10px; font-size:12.5px; color:rgba(255,255,255,.8); text-decoration:underline; font-weight:500;">Manage Budgets →</a>
         </div>
     </div>
 </div>
 {% endif %}
 
-<!-- Budget Progress Section -->
-{% if budget_progress %}
-<div class="card" style="margin-bottom: 24px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <h3 class="card-title" style="margin: 0;">Budget Progress</h3>
-        <a href="{{ url_for('budgets') }}" class="btn btn-outline" style="padding: 6px 12px; font-size: 13px;">
-            Manage
-        </a>
-    </div>
-    <div class="budget-list">
-        {% for b in budget_progress[:4] %}
-        <div style="margin-bottom: 16px;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                <span style="font-weight: 500; color: var(--gray-700);">{{ b.category }}</span>
-                <span style="font-size: 13px; color: var(--gray-500);">
-                    {{ "%.0f"|format(b.spent) }} / {{ "%.0f"|format(b.limit) }} SAR
-                </span>
-            </div>
-            <div class="budget-progress-container">
-                <div class="budget-progress-bar {{ b.status }}" style="width: {{ b.progress_pct }}%;"></div>
-            </div>
+<!-- Budget Progress + Charts -->
+<div class="grid grid-2" style="margin-bottom:24px;">
+    <!-- Expense Breakdown -->
+    <div class="card card-accent-blue">
+        <div class="card-header">
+            <h3 class="card-title">Expense Breakdown</h3>
         </div>
-        {% endfor %}
-    </div>
-</div>
-{% endif %}
-
-<!-- Charts Section -->
-<div class="grid grid-2">
-    <div class="card">
-        <h3 class="card-title">Expense Breakdown</h3>
         <div class="chart-container">
             <canvas id="expenseChart"></canvas>
         </div>
     </div>
 
+    <!-- Budget Progress -->
+    {% if budget_progress %}
+    <div class="card card-accent-teal">
+        <div class="card-header">
+            <h3 class="card-title">Budget Progress</h3>
+            <a href="{{ url_for('budgets') }}" class="btn btn-outline btn-sm">Manage</a>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:14px;">
+            {% for b in budget_progress[:5] %}
+            <div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                    <span style="font-size:13px; font-weight:600; color:var(--text);">{{ b.category }}</span>
+                    <span style="font-size:12px; color:var(--text-muted);">{{ "%.0f"|format(b.spent) }} / {{ "%.0f"|format(b.limit) }} SAR</span>
+                </div>
+                <div class="budget-progress-container">
+                    <div class="budget-progress-bar {{ b.status }}" style="width:{{ b.progress_pct }}%;"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+    <div class="card card-accent-teal">
+        <div class="card-header"><h3 class="card-title">Budget Progress</h3></div>
+        <div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M16 8l-8 8"/></svg>
+            <p>No budgets set yet</p>
+            <a href="{{ url_for('budgets') }}" class="btn btn-primary btn-sm" style="margin-top:12px;">Create Budget</a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Recent Activity + Upcoming Recurring -->
+<div class="grid grid-2">
     <div class="card">
-        <h3 class="card-title">Recent Activity</h3>
-        <div class="transaction-list" style="max-height: 320px; overflow-y: auto;">
+        <div class="card-header">
+            <h3 class="card-title">Recent Activity</h3>
+            <a href="{{ url_for('expenses') }}" class="section-action">View all</a>
+        </div>
+        <div class="transaction-list" style="max-height:340px; overflow-y:auto;">
             {% for t in recent_transactions %}
             <div class="transaction-item">
                 <div class="transaction-info">
                     <div class="transaction-icon {{ t.type }}">
                         {% if t.type == 'income' %}
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-                        </svg>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
                         {% elif t.type == 'expense' %}
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
-                        </svg>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/></svg>
                         {% else %}
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <polyline points="17 1 21 5 17 9" />
-                            <path d="M3 11V9a4 4 0 0 1 4-4h14" />
-                        </svg>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/></svg>
                         {% endif %}
                     </div>
-                    <div>
-                        <p class="transaction-category" style="display: flex; align-items: center; gap: 6px; margin: 0;">
+                    <div style="min-width:0;">
+                        <p class="transaction-category" style="display:flex; align-items:center; gap:5px; margin:0;">
                             {{ t.category }}
-                            {% if t.is_recurring %}
-                            <span
-                                style="font-size: 10px; background: var(--primary-bg); color: var(--primary); padding: 2px 6px; border-radius: 4px;">🔄</span>
-                            {% endif %}
-                            {% if t.budget_month %}
-                            <span class="badge badge-budget-month" style="font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 20px; background: rgba(99, 102, 241, 0.12); color: var(--primary); white-space: nowrap;">
-                                📅 {{ t.budget_month.strftime('%b %Y') }} Budget
-                            </span>
-                            {% endif %}
+                            {% if t.is_recurring %}<span style="font-size:10px; background:var(--blue-50); color:var(--blue-600); padding:1px 5px; border-radius:4px; font-weight:600;">↻</span>{% endif %}
                         </p>
-                        <p class="transaction-meta" style="margin: 4px 0 0 0;">{{ t.date }} • {{ t.description or 'No description' }}</p>
+                        <p class="transaction-meta" style="margin:2px 0 0;">{{ t.date }} · {{ t.description or '—' }}</p>
                     </div>
                 </div>
                 <span class="transaction-amount {{ t.type }}">
-                    {{ '+' if t.type == 'income' else '-' }}{{ "%.2f"|format(t.amount) }} SAR
+                    {{ '+' if t.type == 'income' else '-' }}{{ "%.2f"|format(t.amount) }}
                 </span>
             </div>
             {% else %}
-            <div class="empty-state">
-                <p>No recent transactions</p>
+            <div class="empty-state"><p>No recent transactions</p></div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% if upcoming_recurring %}
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Upcoming Recurring</h3>
+            <a href="{{ url_for('recurring') }}" class="section-action">View all</a>
+        </div>
+        <div class="transaction-list">
+            {% for r in upcoming_recurring %}
+            <div class="transaction-item">
+                <div class="transaction-info">
+                    <div class="transaction-icon {{ r.type }}">
+                        {% if r.type == 'income' %}
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>
+                        {% else %}
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/></svg>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <p class="transaction-category">{{ r.category }}</p>
+                        <p class="transaction-meta">{{ r.frequency|capitalize }} · Due {{ r.next_due }}</p>
+                    </div>
+                </div>
+                <span class="transaction-amount {{ r.type }}">
+                    {{ '+' if r.type == 'income' else '-' }}{{ "%.2f"|format(r.amount) }}
+                </span>
             </div>
             {% endfor %}
         </div>
     </div>
+    {% else %}
+    <div class="card">
+        <div class="card-header"><h3 class="card-title">Quick Actions</h3></div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+            <a href="{{ url_for('income') }}" class="btn btn-success btn-block">+ Add Income</a>
+            <a href="{{ url_for('expenses') }}" class="btn btn-danger btn-block">+ Add Expense</a>
+            <a href="{{ url_for('accounts') }}" class="btn btn-outline btn-block">Manage Accounts</a>
+            <a href="{{ url_for('chat') }}" class="btn btn-primary btn-block">Ask AI Assistant</a>
+        </div>
+    </div>
+    {% endif %}
 </div>
 
-<!-- Upcoming Recurring -->
-{% if upcoming_recurring %}
-<div class="card" style="margin-top: 24px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <h3 class="card-title" style="margin: 0;">Upcoming Recurring</h3>
-        <a href="{{ url_for('recurring') }}" class="btn btn-outline" style="padding: 6px 12px; font-size: 13px;">
-            View All
-        </a>
-    </div>
-    <div class="transaction-list">
-        {% for r in upcoming_recurring %}
-        <div class="transaction-item">
-            <div class="transaction-info">
-                <div class="transaction-icon {{ r.type }}">
-                    {% if r.type == 'income' %}
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-                    </svg>
-                    {% else %}
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
-                    </svg>
-                    {% endif %}
-                </div>
-                <div>
-                    <p class="transaction-category">{{ r.category }}</p>
-                    <p class="transaction-meta">{{ r.frequency|capitalize }} • Due: {{ r.next_due }}</p>
-                </div>
-            </div>
-            <span class="transaction-amount {{ r.type }}">
-                {{ '+' if r.type == 'income' else '-' }}{{ "%.2f"|format(r.amount) }} SAR
-            </span>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-{% endif %}
-{% endblock %}
+</div><!-- /content-wrapper -->
+{% endblock %}{# layout #}
 
 {% block scripts %}
 <script>
-    // Load AI Summary
     fetch('/api/summary')
-        .then(res => res.json())
-        .then(data => {
-            document.getElementById('aiSummary').innerHTML = `<p style="font-size: 14px; line-height: 1.6;">${data.summary}</p>`;
+        .then(r => r.json())
+        .then(d => {
+            document.getElementById('aiSummary').innerHTML =
+                `<p style="font-size:14px;line-height:1.65;color:var(--text-muted);">${d.summary}</p>`;
         })
         .catch(() => {
-            document.getElementById('aiSummary').innerHTML = '<p style="font-size: 14px; line-height: 1.6; opacity: 0.8;">Unable to load insights. Check your AI configuration.</p>';
+            document.getElementById('aiSummary').innerHTML =
+                '<p style="font-size:14px;color:var(--text-muted);opacity:.8;">Unable to load insights.</p>';
         });
 
-    const expenseData = {{ expense_by_category| tojson }};
-
+    const expenseData = {{ expense_by_category | tojson }};
     if (Object.keys(expenseData).length > 0) {
-        const ctx = document.getElementById('expenseChart').getContext('2d');
-        new Chart(ctx, {
+        new Chart(document.getElementById('expenseChart'), {
             type: 'doughnut',
             data: {
                 labels: Object.keys(expenseData),
                 datasets: [{
                     data: Object.values(expenseData),
-                    backgroundColor: ['#1d4ed8', '#0d9488', '#059669', '#d97706', '#7c3aed', '#0284c7'],
-                    borderWidth: 0,
-                    hoverOffset: 4
+                    backgroundColor: ['#2563eb','#0d9488','#16a34a','#d97706','#7c3aed','#0891b2','#dc2626','#ea580c'],
+                    borderWidth: 0, hoverOffset: 6
                 }]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '60%',
+                responsive: true, maintainAspectRatio: false, cutout: '65%',
                 plugins: {
                     legend: {
                         position: 'bottom',
-                        labels: {
-                            padding: 20,
-                            usePointStyle: true,
-                            font: { family: 'Inter', size: 12 }
-                        }
+                        labels: { padding: 16, usePointStyle: true, font: { family: 'Inter', size: 12 } }
                     }
                 }
             }
