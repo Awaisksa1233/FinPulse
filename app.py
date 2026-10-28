@@ -2267,6 +2267,29 @@ def telegram_save_token():
     return redirect(url_for('telegram_setup'))
 
 
+def _is_empty_telegram_shell(user):
+    """True for an account auto-created by the bot's /start that holds no real data."""
+    from models import LoanAccount, CarContract, Budget, RecurringTemplate
+    if not (user.email or '').endswith('@telegram.user'):
+        return False
+    uid = user.id
+    if any(m.query.filter_by(user_id=uid).count() for m in
+           (Transaction, Loan, LoanAccount, CarContract, Budget, RecurringTemplate)):
+        return False
+    return all((a.balance or 0) == 0 for a in Account.query.filter_by(user_id=uid).all())
+
+
+def _delete_user_shell(user):
+    """Remove an empty auto-created account (its accounts and chat history) without committing."""
+    from models import TelegramUser
+    uid = user.id
+    Account.query.filter_by(user_id=uid).delete()
+    ChatMessage.query.filter_by(user_id=uid).delete()
+    # Keep Telegram links: the caller re-points the one it is linking; drop any others.
+    TelegramUser.query.filter_by(user_id=uid).update({'user_id': current_user.id})
+    db.session.delete(user)
+
+
 @app.route('/telegram/link', methods=['POST'])
 @login_required
 def telegram_link():
@@ -2279,17 +2302,27 @@ def telegram_link():
         flash('Please enter a link code.', 'error')
         return redirect(url_for('telegram_setup'))
     
-    # Find telegram user with this code
-    tg_user = TelegramUser.query.filter_by(link_code=link_code).first()
+    # Accept the code as shown by the bot, with or without the internal LOGIN: prefix
+    if link_code.startswith('LOGIN:'):
+        link_code = link_code[len('LOGIN:'):]
+    tg_user = TelegramUser.query.filter(
+        TelegramUser.link_code.in_([link_code, f"LOGIN:{link_code}"])
+    ).first()
     
     if not tg_user:
         flash('Invalid link code. Please get a new code by sending /start to the bot.', 'error')
         return redirect(url_for('telegram_setup'))
     
-    # Check if already linked to another user
-    if tg_user.verified and tg_user.user_id != current_user.id:
-        flash('This Telegram account is already linked to another user.', 'error')
-        return redirect(url_for('telegram_setup'))
+    # Already linked to a different web account?
+    if tg_user.user_id != current_user.id and tg_user.verified:
+        old_user = db.session.get(User, tg_user.user_id)
+        if old_user and _is_empty_telegram_shell(old_user):
+            # /start auto-created a blank account for this Telegram user. Fold it into
+            # the account the person is actually signed in to.
+            _delete_user_shell(old_user)
+        else:
+            flash('This Telegram account is already linked to another user that has data.', 'error')
+            return redirect(url_for('telegram_setup'))
     
     # Link to current user
     tg_user.user_id = current_user.id
