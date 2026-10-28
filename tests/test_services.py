@@ -29,14 +29,12 @@ def test_format_daily_report():
     assert 'Great job!' in report
 
 
-def test_groq_model_kwargs(monkeypatch):
+def test_groq_default_model_is_not_gpt(monkeypatch):
     from services import groq_service
-    monkeypatch.setenv('GROQ_MODEL', 'openai/gpt-oss-120b')
-    assert groq_service.model_kwargs() == {'reasoning_effort': 'low'}
-    monkeypatch.setenv('GROQ_MODEL', 'some/other-model')
-    assert groq_service.model_kwargs() == {}
-    monkeypatch.delenv('GROQ_MODEL')
-    assert groq_service.get_model() == 'openai/gpt-oss-120b'
+    monkeypatch.delenv('GROQ_MODEL', raising=False)
+    assert groq_service.get_model() == 'qwen/qwen3.8-27b'
+    monkeypatch.setenv('GROQ_MODEL', 'allam-2-7b')
+    assert groq_service.get_model() == 'allam-2-7b'
 
 
 def test_telegram_request_retries_proxy_errors(monkeypatch):
