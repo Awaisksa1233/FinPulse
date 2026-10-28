@@ -225,12 +225,16 @@
                         <option value="final">Final / balloon payment</option>
                     </select></div>
                 <div class="form-group"><label class="form-label">Pay From</label>
-                    <select name="account_id" required class="form-control" id="payAccount">
+                    <select name="account_id" class="form-control" id="payAccount">
                         {% for acc in accounts %}<option value="{{ acc.id }}">{{ acc.name }} ({{ "%.2f"|format(acc.balance) }})</option>{% endfor %}
                     </select></div>
             </div>
             <div class="form-group"><label class="form-label">Note</label>
                 <input type="text" name="note" maxlength="255" class="form-control" placeholder="Optional"></div>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 10px; cursor: pointer;">
+                <input type="checkbox" name="record_only" id="recordOnly" onchange="document.getElementById('payAccount').disabled = this.checked;">
+                Already paid earlier — just mark it paid (don't add an expense or change a balance)
+            </label>
             <p style="font-size: 12px; color: var(--gray-500); margin-bottom: 12px;">This is added to your expenses (category “Car Payment”) and deducted from the account.</p>
             <button type="submit" class="btn btn-success btn-block">Record Payment</button>
         </form>

@@ -2800,7 +2800,8 @@ def pay_car_contract(contract_id):
     try:
         amount = float(request.form.get('amount', ''))
         pay_date = datetime.strptime(request.form.get('date', ''), '%Y-%m-%d').date()
-        account_id = int(request.form.get('account_id', ''))
+        record_only = request.form.get('record_only') == 'on'
+        account_id = None if record_only else int(request.form.get('account_id', ''))
     except ValueError:
         flash('Please check the amount, date and account.', 'error')
         return redirect(url_for('car_payments'))
@@ -2808,9 +2809,19 @@ def pay_car_contract(contract_id):
     kind = request.form.get('kind', 'installment')
     if kind not in ('installment', 'extra', 'final'):
         kind = 'installment'
-    account = db.session.get(Account, account_id)
-    if amount <= 0 or not account or account.user_id != current_user.id:
+    account = None if record_only else db.session.get(Account, account_id)
+    if amount <= 0 or (not record_only and (not account or account.user_id != current_user.id)):
         flash('Enter a positive amount and a valid account.', 'error')
+        return redirect(url_for('car_payments'))
+
+    if record_only:
+        # History only: mark as paid on the contract without touching expenses or balances.
+        db.session.add(CarPayment(
+            contract_id=contract.id, date=pay_date, amount=amount, kind=kind,
+            note=(request.form.get('note') or '').strip() or None, transaction_id=None,
+        ))
+        db.session.commit()
+        flash(f'Payment of {amount:.2f} SAR recorded on {contract.name} (no expense posted).', 'success')
         return redirect(url_for('car_payments'))
 
     labels = {'installment': 'installment', 'extra': 'extra payment', 'final': 'final payment'}

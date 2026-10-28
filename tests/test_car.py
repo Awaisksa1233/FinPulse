@@ -100,3 +100,20 @@ def test_add_contract_validation(client, auth_user):
     client.post('/car-payments/add', data={'name': 'Good', 'monthly_installment': '900',
                                            'num_installments': '12', 'first_due_date': '2026-01-01'})
     assert CarContract.query.count() == 1
+
+
+def test_record_only_payment_changes_no_balance_or_expense(client, auth_user):
+    acct = Account(user_id=auth_user.id, name='Bank', type='bank', balance=5000)
+    db.session.add(acct)
+    db.session.commit()
+    c = _contract(auth_user)
+    client.post('/login', data={'email': 'testuser@example.com', 'password': 'testpassword'})
+    client.post(f'/car-payments/pay/{c.id}', data={
+        'amount': '1000', 'date': '2026-02-01', 'kind': 'installment', 'record_only': 'on'})
+    db.session.refresh(acct)
+    assert acct.balance == 5000 and Transaction.query.count() == 0
+    p = CarPayment.query.one()
+    assert p.transaction_id is None and summarize(c)['paid_count'] == 1
+    client.post(f'/car-payments/payment/delete/{p.id}', data={})  # removing it must not error or move money
+    db.session.refresh(acct)
+    assert acct.balance == 5000 and CarPayment.query.count() == 0
