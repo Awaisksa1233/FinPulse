@@ -5,6 +5,7 @@ Handles webhook processing for Telegram bot integration.
 import os
 import json
 import secrets
+import time
 import requests
 from datetime import datetime
 
@@ -21,6 +22,23 @@ TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 TELEGRAM_API_URL = _get_api_url()
 
 
+def _request(method: str, url: str, attempts: int = 5, **kwargs):
+    """requests.get/post with retries on connection errors.
+
+    PythonAnywhere free accounts reach the internet through a shared proxy that
+    intermittently refuses tunnels (503). Those failures are instant and a retry
+    usually succeeds, so retry connection-level errors only (never HTTP responses).
+    """
+    last_error = None
+    for attempt in range(attempts):
+        try:
+            return getattr(requests, method)(url, **kwargs)
+        except requests.exceptions.ConnectionError as e:  # includes ProxyError
+            last_error = e
+            time.sleep(0.4 * (attempt + 1))
+    raise last_error
+
+
 def send_telegram_message(chat_id: int, text: str, parse_mode: str = 'Markdown') -> bool:
     """Send a message to a Telegram chat."""
     api_url = _get_api_url()
@@ -29,7 +47,7 @@ def send_telegram_message(chat_id: int, text: str, parse_mode: str = 'Markdown')
         return False
     
     try:
-        response = requests.post(
+        response = _request('post',
             f"{api_url}/sendMessage",
             json={
                 'chat_id': chat_id,
@@ -42,7 +60,7 @@ def send_telegram_message(chat_id: int, text: str, parse_mode: str = 'Markdown')
             return True
         # If markdown parsing fails, retry as plain text
         if response.status_code == 400 and parse_mode != '':
-            plain_response = requests.post(
+            plain_response = _request('post',
                 f"{api_url}/sendMessage",
                 json={'chat_id': chat_id, 'text': text},
                 timeout=10
@@ -67,7 +85,7 @@ def set_webhook(webhook_url: str) -> dict:
         if secret:
             payload['secret_token'] = secret
             
-        response = requests.post(
+        response = _request('post',
             f"{api_url}/setWebhook",
             json=payload,
             timeout=10
@@ -88,7 +106,7 @@ def get_webhook_info() -> dict:
         return {'url': None, 'error': 'Bot token not configured'}
     
     try:
-        response = requests.get(f"{api_url}/getWebhookInfo", timeout=10)
+        response = _request('get', f"{api_url}/getWebhookInfo", timeout=10)
         result = response.json()
         if result.get('ok'):
             return {
@@ -109,7 +127,7 @@ def get_bot_info() -> dict:
         return {'success': False, 'error': 'Bot token not configured'}
     
     try:
-        response = requests.get(f"{api_url}/getMe", timeout=10)
+        response = _request('get', f"{api_url}/getMe", timeout=10)
         result = response.json()
         if result.get('ok'):
             return {

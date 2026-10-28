@@ -37,3 +37,31 @@ def test_groq_model_kwargs(monkeypatch):
     assert groq_service.model_kwargs() == {}
     monkeypatch.delenv('GROQ_MODEL')
     assert groq_service.get_model() == 'openai/gpt-oss-120b'
+
+
+def test_telegram_request_retries_proxy_errors(monkeypatch):
+    import requests
+    from services import telegram_service
+    monkeypatch.setattr(telegram_service.time, 'sleep', lambda s: None)
+    calls = {'n': 0}
+
+    class Resp:
+        status_code = 200
+
+    def flaky_get(url, **kw):
+        calls['n'] += 1
+        if calls['n'] < 3:
+            raise requests.exceptions.ProxyError('503 Service Unavailable')
+        return Resp()
+
+    monkeypatch.setattr(requests, 'get', flaky_get)
+    assert telegram_service._request('get', 'https://example.test').status_code == 200
+    assert calls['n'] == 3
+
+    def always_down(url, **kw):
+        raise requests.exceptions.ProxyError('503')
+
+    monkeypatch.setattr(requests, 'get', always_down)
+    import pytest
+    with pytest.raises(requests.exceptions.ProxyError):
+        telegram_service._request('get', 'https://example.test', attempts=3)
