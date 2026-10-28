@@ -27,3 +27,13 @@ def test_format_daily_report():
     assert 'Total: 15,500 SAR' in report
     assert 'Owed to you: 1,000 SAR' in report
     assert 'Great job!' in report
+
+
+def test_groq_model_kwargs(monkeypatch):
+    from services import groq_service
+    monkeypatch.setenv('GROQ_MODEL', 'openai/gpt-oss-120b')
+    assert groq_service.model_kwargs() == {'reasoning_effort': 'low'}
+    monkeypatch.setenv('GROQ_MODEL', 'some/other-model')
+    assert groq_service.model_kwargs() == {}
+    monkeypatch.delenv('GROQ_MODEL')
+    assert groq_service.get_model() == 'openai/gpt-oss-120b'

@@ -2390,11 +2390,8 @@ ADMIN_PIN = os.getenv('ADMIN_PIN', '7562')
 
 # Default models list (will be updated from Groq API)
 GROQ_MODELS = [
-    {"id": "llama-3.3-70b-versatile", "name": "Llama 3.3 70B (Recommended)"},
-    {"id": "llama-3.1-70b-versatile", "name": "Llama 3.1 70B"},
-    {"id": "llama-3.1-8b-instant", "name": "Llama 3.1 8B (Faster)"},
-    {"id": "mixtral-8x7b-32768", "name": "Mixtral 8x7B"},
-    {"id": "gemma2-9b-it", "name": "Gemma 2 9B"},
+    {"id": "openai/gpt-oss-120b", "name": "GPT-OSS 120B (Recommended)"},
+    {"id": "openai/gpt-oss-20b", "name": "GPT-OSS 20B (Faster)"},
 ]
 
 @app.route('/admin')
@@ -2408,7 +2405,7 @@ def admin():
     else:
         api_key_display = ''
     
-    model = os.getenv('GROQ_MODEL', 'llama-3.3-70b-versatile')
+    model = os.getenv('GROQ_MODEL', 'openai/gpt-oss-120b')
     
     # System statistics
     stats = {}
@@ -2534,7 +2531,7 @@ def admin_save():
         return redirect(url_for('admin'))
     
     api_key = request.form.get('api_key', '')
-    model = request.form.get('model', 'llama-3.3-70b-versatile')
+    model = request.form.get('model', 'openai/gpt-oss-120b')
     custom_model = request.form.get('custom_model', '').strip()
     
     # Use custom model if selected

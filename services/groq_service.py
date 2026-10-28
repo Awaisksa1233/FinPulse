@@ -15,7 +15,18 @@ def get_groq_client():
 
 def get_model():
     """Get configured AI model."""
-    return os.getenv('GROQ_MODEL', 'llama-3.3-70b-versatile')
+    return os.getenv('GROQ_MODEL', 'openai/gpt-oss-120b')
+
+
+def model_kwargs():
+    """Extra request options for the configured model.
+
+    gpt-oss models spend part of max_tokens on hidden reasoning, which cuts short
+    replies off mid-sentence; keep the reasoning effort low for these small tasks.
+    """
+    if get_model().startswith('openai/gpt-oss'):
+        return {'reasoning_effort': 'low'}
+    return {}
 
 
 def analyze_spending_spike(current_amount: float, category: str, history: list) -> dict:
@@ -36,6 +47,7 @@ Return JSON with exactly these fields:
 
         response = client.chat.completions.create(
             model=get_model(),
+            **model_kwargs(),
             messages=[
                 {"role": "system", "content": "You are a financial analysis assistant. Respond only with valid JSON."},
                 {"role": "user", "content": prompt}
@@ -156,6 +168,7 @@ Return JSON with these fields:
 
         response = client.chat.completions.create(
             model=get_model(),
+            **model_kwargs(),
             messages=messages,
             response_format={"type": "json_object"},
             temperature=0.5,
@@ -216,7 +229,8 @@ Financial Overview:
 Provide a 2-3 sentence friendly summary with one actionable tip. Be concise and encouraging. Use SAR as the currency."""
 
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=get_model(),
+            **model_kwargs(),
             messages=[
                 {"role": "system", "content": "You are a helpful financial advisor. Be concise, friendly, and give practical advice."},
                 {"role": "user", "content": prompt}
@@ -285,6 +299,7 @@ Example style: "This month was an epic financial quest! 🚀 You conquered the i
 
         response = client.chat.completions.create(
             model=get_model(),
+            **model_kwargs(),
             messages=[
                 {"role": "system", "content": "You are an enthusiastic storyteller who makes finance fun. Be creative, use emojis, and keep responses SHORT (3-4 sentences max)."},
                 {"role": "user", "content": prompt}
@@ -357,6 +372,7 @@ Use SAR as currency. Be concise and encouraging."""
 
         response = client.chat.completions.create(
             model=get_model(),
+            **model_kwargs(),
             messages=[
                 {"role": "system", "content": "You are a helpful financial advisor. Be concise, friendly, and give practical advice about loans."},
                 {"role": "user", "content": prompt}
@@ -445,6 +461,7 @@ Keep reasoning SHORT (under 15 words). Use SAR as currency."""
 
         response = client.chat.completions.create(
             model=get_model(),
+            **model_kwargs(),
             messages=[
                 {"role": "system", "content": "You are a helpful financial advisor. Respond only with valid JSON."},
                 {"role": "user", "content": prompt}
