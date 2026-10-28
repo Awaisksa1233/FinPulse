@@ -207,21 +207,19 @@
                     <label for="tg_remember" style="font-size: 13px; color: var(--gray-600); cursor: pointer;">Remember
                         me</label>
                 </div>
-                <button type="submit" class="btn btn-telegram btn-block">
-                    {% if mode == 'login' %}Sign In{% else %}Create Account{% endif %}
-                </button>
+                <button type="submit" class="btn btn-telegram btn-block">Sign in with Telegram code</button>
             </form>
         </div>
 
         <!-- Email Login Toggle -->
         <div class="email-login-toggle">
             <button type="button" onclick="toggleEmailForm()">
-                {% if mode == 'login' %}Use email & password instead{% else %}Register with email instead{% endif %}
+                {% if mode == 'login' %}Hide/show email &amp; password form{% else %}Hide/show email registration{% endif %}
             </button>
         </div>
 
         <!-- Email Form (Hidden by Default) -->
-        <div class="email-form" id="emailForm">
+        <div class="email-form show" id="emailForm">
             <div class="divider"><span>Email Login</span></div>
 
             <form class="auth-form" method="POST">

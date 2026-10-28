@@ -11,7 +11,32 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '.env'))
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'finpulse-secret-key')
+
+
+def _load_secret_key():
+    """Use SECRET_KEY from the environment, else generate one and keep it on disk
+    so sessions survive restarts without shipping a guessable default."""
+    key = os.getenv('SECRET_KEY')
+    if key:
+        return key
+    instance_dir = os.path.join(basedir, 'instance')
+    key_path = os.path.join(instance_dir, 'secret_key')
+    try:
+        with open(key_path) as f:
+            return f.read().strip()
+    except OSError:
+        import secrets
+        key = secrets.token_hex(32)
+        try:
+            os.makedirs(instance_dir, exist_ok=True)
+            with open(key_path, 'w') as f:
+                f.write(key)
+        except OSError:
+            pass
+        return key
+
+
+app.config['SECRET_KEY'] = _load_secret_key()
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///finpulse.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=30)
@@ -34,8 +59,13 @@ login_manager.login_message = 'Please log in to access this page.'
 def load_user(user_id):
     return db.session.get(User, int(user_id))
 
-# Note: Database tables are now managed by Flask-Migrate.
-# Run 'flask db upgrade' to apply migrations.
+# Create any missing tables on startup so a fresh install works out of the box.
+# (create_all never alters existing tables; use Flask-Migrate for schema changes.)
+with app.app_context():
+    try:
+        db.create_all()
+    except Exception as exc:  # e.g. database not reachable yet
+        app.logger.warning('Could not create tables on startup: %s', exc)
 
 
 @app.before_request
@@ -197,6 +227,12 @@ def login_telegram():
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
+
+    # Honour the admin "registration" toggle (REGISTRATION_OPEN); the very first
+    # account can always be created so a fresh install is never locked out.
+    if os.getenv('REGISTRATION_OPEN', 'true').lower() == 'false' and User.query.count() > 0:
+        flash('Registration is closed.', 'error')
+        return redirect(url_for('login'))
     
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
@@ -811,6 +847,42 @@ def expenses():
         transactions=pagination.items,
         pagination=pagination,
         today=date.today().isoformat()
+    )
+
+
+# ============ EXPORT ============
+@app.route('/export/transactions.csv')
+@login_required
+def export_transactions():
+    """Download all of the current user's transactions as CSV."""
+    import csv, io
+    from flask import Response
+
+    accounts = {a.id: a.name for a in Account.query.filter_by(user_id=current_user.id).all()}
+    txs = Transaction.query.filter_by(user_id=current_user.id).order_by(Transaction.date.desc(), Transaction.id.desc()).all()
+
+    def safe(value):
+        # Neutralise spreadsheet formula injection from free-text fields
+        value = value or ''
+        return "'" + value if value[:1] in ('=', '+', '-', '@') else value
+
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(['Date', 'Type', 'Category', 'Amount', 'Account', 'To Account', 'Description'])
+    for t in txs:
+        writer.writerow([
+            t.date.isoformat() if t.date else '',
+            t.type,
+            safe(t.category),
+            f"{t.amount:.2f}",
+            safe(accounts.get(t.account_id, '')),
+            safe(accounts.get(t.to_account_id, '')),
+            safe(t.description),
+        ])
+    return Response(
+        out.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename=finpulse_transactions_{date.today().isoformat()}.csv'},
     )
 
 
@@ -2593,7 +2665,13 @@ def admin_clear_all_chat():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Debug mode exposes an interactive debugger; keep it off unless explicitly enabled,
+    # and bind to localhost by default. Set FLASK_HOST=0.0.0.0 to reach it from your phone.
+    app.run(
+        debug=os.getenv('FLASK_DEBUG', 'false').lower() == 'true',
+        host=os.getenv('FLASK_HOST', '127.0.0.1'),
+        port=int(os.getenv('PORT', '5000')),
+    )
 
 
 # Cloudflare Workers Python entrypoint wrapper

@@ -1,0 +1,12 @@
+flask
+flask-sqlalchemy
+flask-cors
+flask-login
+flask-wtf
+Flask-Migrate
+python-dotenv
+python-dateutil
+requests
+httpx
+groq
+pymysql

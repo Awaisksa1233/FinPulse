@@ -14,7 +14,9 @@ dependencies = [
     "flask-wtf",
     "a2wsgi",
     "pymysql",
-    "Flask-Migrate"
+    "Flask-Migrate",
+    "python-dateutil",
+    "requests"
 ]
 
 [dependency-groups]

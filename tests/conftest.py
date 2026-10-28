@@ -34,3 +34,19 @@ def auth_user(app):
     db.session.add(user)
     db.session.commit()
     return user
+
+
+@pytest.fixture(autouse=True)
+def csrf_token(client):
+    """Seed a CSRF token in the session and make client.post send it automatically."""
+    with client.session_transaction() as sess:
+        sess['_csrf_token'] = 'test-token'
+    original_post = client.post
+
+    def post(*args, **kwargs):
+        data = kwargs.get('data')
+        if isinstance(data, dict):
+            kwargs['data'] = {**data, 'csrf_token': 'test-token'}
+        return original_post(*args, **kwargs)
+
+    client.post = post

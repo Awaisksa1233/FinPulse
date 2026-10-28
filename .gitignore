@@ -51,6 +51,7 @@ share/python-wheels/
 instance/
 .env
 .env.*
+!.env.example
 *.db
 finpulse.zip
 backup_*/
