@@ -24,8 +24,9 @@ Tables are created automatically on first run; data lives in `instance/finpulse.
 2. **Income / Expenses** – log transactions; balances update automatically.
 3. **Budgets** – set monthly limits per category and watch progress on the dashboard.
 4. **Recurring** – rent, salary, subscriptions are posted automatically when due.
-5. **Loans & Debts** – track money lent to / borrowed from people.
-6. **Reports** – monthly/yearly breakdowns. **Export transactions (CSV)** for backup or Excel.
+5. **Car Payments** – enter your contract once (price, down payment, monthly installment, number of installments, first due date, optional final/balloon payment). FinPulse builds the schedule, flags overdue instalments and shows what's left. **Record Payment** posts a "Car Payment" expense and deducts it from the account you pick; removing a payment reverses it.
+6. **Loans & Debts** – track money lent to / borrowed from people.
+7. **Reports** – monthly/yearly breakdowns. **Export transactions (CSV)** for backup or Excel.
 
 ## Use it on your phone
 

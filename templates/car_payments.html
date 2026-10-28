@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+{% block title %}Car Payments{% endblock %}
+
+{% block content %}
+<header class="page-header" style="flex-wrap: wrap; gap: 16px;">
+    <div>
+        <h2 class="page-title">Car Payments</h2>
+        <p class="page-subtitle">Track your car finance contracts, instalments and what is left to pay.</p>
+    </div>
+    <button onclick="openContractModal()" class="btn btn-primary">+ Add Contract</button>
+</header>
+
+{% if items %}
+<div class="summary-grid" style="margin-bottom: 24px;">
+    <div class="summary-card white">
+        <p class="summary-label">Remaining to Pay</p>
+        <h3 class="summary-value" style="color: var(--danger);">{{ "%.2f"|format(total_remaining) }} SAR</h3>
+    </div>
+    <div class="summary-card white">
+        <p class="summary-label">Paid So Far</p>
+        <h3 class="summary-value" style="color: var(--success);">{{ "%.2f"|format(total_paid) }} SAR</h3>
+    </div>
+    <div class="summary-card white">
+        <p class="summary-label">Monthly Installments</p>
+        <h3 class="summary-value">{{ "%.2f"|format(monthly_total) }} SAR</h3>
+    </div>
+    <div class="summary-card white">
+        <p class="summary-label">Overdue</p>
+        <h3 class="summary-value" style="color: {{ 'var(--danger)' if overdue_total else 'var(--success)' }};">{{ overdue_total }}</h3>
+    </div>
+</div>
+
+{% for it in items %}
+{% set c = it.c %}{% set s = it.s %}
+<div class="card" style="margin-bottom: 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+        <div>
+            <h3 style="font-size: 18px; font-weight: 700;">🚗 {{ c.name }}
+                {% if s.is_complete %}<span style="font-size: 11px; background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 999px; margin-left: 6px;">PAID OFF</span>
+                {% elif s.overdue_count %}<span style="font-size: 11px; background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 999px; margin-left: 6px;">{{ s.overdue_count }} OVERDUE</span>{% endif %}
+            </h3>
+            <p style="font-size: 13px; color: var(--gray-500); margin-top: 4px;">
+                {% if c.lender %}{{ c.lender }}{% endif %}{% if c.contract_number %} • Contract #{{ c.contract_number }}{% endif %}
+                {% if c.interest_rate %} • {{ c.interest_rate }}% p.a.{% endif %}
+            </p>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            {% if not s.is_complete %}
+            <button class="btn btn-success btn-sm"
+                data-pay='{{ {"id": c.id, "name": c.name, "amount": (s.next_amount or 0)|round(2), "account_id": c.account_id, "final": s.final_due is not none and s.paid_count >= c.num_installments}|tojson }}'
+                onclick="openPayModal(this)">Record Payment</button>
+            {% endif %}
+            <button class="btn btn-outline btn-sm"
+                data-contract='{{ {"id": c.id, "name": c.name, "lender": c.lender or "", "contract_number": c.contract_number or "", "vehicle_price": c.vehicle_price if c.vehicle_price is not none else "", "down_payment": c.down_payment or 0, "monthly_installment": c.monthly_installment, "num_installments": c.num_installments, "first_due_date": c.first_due_date.isoformat(), "final_payment": c.final_payment or 0, "interest_rate": c.interest_rate if c.interest_rate is not none else "", "account_id": c.account_id or "", "notes": c.notes or ""}|tojson }}'
+                onclick="openContractModal(this)">Edit</button>
+            <form method="POST" action="{{ url_for('delete_car_contract', contract_id=c.id) }}" style="margin: 0;"
+                onsubmit="return confirm('Delete this contract? Payments already posted stay in your expenses.');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-outline btn-sm" style="color: var(--danger);">Delete</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Progress -->
+    <div style="display: flex; justify-content: space-between; font-size: 13px; color: var(--gray-600); margin-bottom: 6px;">
+        <span>{{ s.paid_count }} of {{ c.num_installments }} installments paid</span>
+        <span>{{ "%.0f"|format(s.percent) }}%</span>
+    </div>
+    <div class="budget-progress-container">
+        <div class="budget-progress-bar {{ 'exceeded' if s.overdue_count else 'ok' }}" style="width: {{ s.percent }}%;"></div>
+    </div>
+
+    <div class="summary-grid" style="margin-top: 20px;">
+        <div><p class="summary-label">Monthly</p><p style="font-weight: 700;">{{ "%.2f"|format(c.monthly_installment) }} SAR</p></div>
+        <div><p class="summary-label">Paid</p><p style="font-weight: 700; color: var(--success);">{{ "%.2f"|format(s.paid) }} SAR</p></div>
+        <div><p class="summary-label">Remaining</p><p style="font-weight: 700; color: var(--danger);">{{ "%.2f"|format(s.remaining) }} SAR</p></div>
+        <div><p class="summary-label">Next Due</p>
+            <p style="font-weight: 700;">
+                {% if s.next_due %}{{ s.next_due }}<span style="font-weight: 400; font-size: 12px; color: var(--gray-500);">
+                    ({{ s.next_amount|round(2) }} SAR{% if s.days_to_next is not none %}, {% if s.days_to_next < 0 %}{{ -s.days_to_next }} days late{% elif s.days_to_next == 0 %}today{% else %}in {{ s.days_to_next }} days{% endif %}{% endif %})</span>
+                {% else %}—{% endif %}
+            </p></div>
+        <div><p class="summary-label">Total Cost (incl. down payment)</p><p style="font-weight: 700;">{{ "%.2f"|format(s.total_cost) }} SAR</p></div>
+        {% if c.vehicle_price %}
+        <div><p class="summary-label">Vehicle Price</p><p style="font-weight: 700;">{{ "%.2f"|format(c.vehicle_price) }} SAR</p></div>
+        {% endif %}
+        {% if c.down_payment %}
+        <div><p class="summary-label">Down Payment</p><p style="font-weight: 700;">{{ "%.2f"|format(c.down_payment) }} SAR</p></div>
+        {% endif %}
+        {% if c.final_payment %}
+        <div><p class="summary-label">Final Payment</p><p style="font-weight: 700;">{{ "%.2f"|format(c.final_payment) }} SAR<span style="font-weight: 400; font-size: 12px; color: var(--gray-500);"> due {{ s.final_due }}</span></p></div>
+        {% endif %}
+    </div>
+    {% if c.notes %}<p style="font-size: 13px; color: var(--gray-500); margin-top: 12px;">📝 {{ c.notes }}</p>{% endif %}
+
+    <details style="margin-top: 16px;">
+        <summary style="cursor: pointer; font-weight: 600; font-size: 14px;">Payment schedule</summary>
+        <div style="overflow-x: auto; margin-top: 8px;">
+            <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+                <thead><tr style="text-align: left; color: var(--gray-500);"><th style="padding: 6px;">#</th><th>Due date</th><th>Amount</th><th>Status</th></tr></thead>
+                <tbody>
+                {% for row in s.schedule %}
+                <tr style="border-top: 1px solid var(--gray-100);">
+                    <td style="padding: 6px;">{{ row.n }}</td>
+                    <td>{{ row.due }}</td>
+                    <td>{{ "%.2f"|format(row.amount) }}</td>
+                    <td style="color: {{ {'paid': 'var(--success)', 'overdue': 'var(--danger)', 'upcoming': 'var(--gray-500)'}[row.status] }}; font-weight: 600;">{{ row.status|capitalize }}</td>
+                </tr>
+                {% endfor %}
+                {% if c.final_payment %}
+                <tr style="border-top: 1px solid var(--gray-100);">
+                    <td style="padding: 6px;">Final</td><td>{{ s.final_due }}</td><td>{{ "%.2f"|format(c.final_payment) }}</td>
+                    <td style="font-weight: 600; color: {{ 'var(--success)' if s.final_paid >= c.final_payment - 0.005 else 'var(--gray-500)' }};">{{ 'Paid' if s.final_paid >= c.final_payment - 0.005 else 'Upcoming' }}</td>
+                </tr>
+                {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </details>
+
+    <details style="margin-top: 12px;">
+        <summary style="cursor: pointer; font-weight: 600; font-size: 14px;">Payments made ({{ c.payments|length }})</summary>
+        {% for p in c.payments|reverse %}
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-top: 1px solid var(--gray-100); font-size: 13px;">
+            <span>{{ p.date }} • {{ {'installment': 'Installment', 'extra': 'Extra payment', 'final': 'Final payment'}[p.kind] }}{% if p.note %} • {{ p.note }}{% endif %}</span>
+            <span style="display: flex; align-items: center; gap: 10px;">
+                <strong>{{ "%.2f"|format(p.amount) }} SAR</strong>
+                <form method="POST" action="{{ url_for('delete_car_payment', payment_id=p.id) }}" style="margin: 0;"
+                    onsubmit="return confirm('Remove this payment? The expense will be reversed.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-outline btn-sm" style="color: var(--danger);">Remove</button>
+                </form>
+            </span>
+        </div>
+        {% else %}
+        <p style="font-size: 13px; color: var(--gray-500); margin-top: 8px;">No payments recorded yet.</p>
+        {% endfor %}
+    </details>
+</div>
+{% endfor %}
+{% else %}
+<div class="card">
+    <div class="empty-state" style="padding: 48px;">
+        <div style="font-size: 48px; margin-bottom: 12px;">🚗</div>
+        <h3 style="margin-bottom: 8px; color: var(--gray-700);">No car contracts yet</h3>
+        <p style="color: var(--gray-500); margin-bottom: 16px;">Enter your contract details once and FinPulse will show your schedule, what's overdue and how much is left.</p>
+        <button onclick="openContractModal()" class="btn btn-primary">Add Contract</button>
+    </div>
+</div>
+{% endif %}
+
+<!-- Contract Modal (add / edit) -->
+<div id="contractModal" class="modal-backdrop" style="display: none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title" id="contractModalTitle">Add Car Contract</h3>
+            <button class="modal-close" type="button" onclick="closeModal('contractModal')">✕</button>
+        </div>
+        <form method="POST" id="contractForm" action="{{ url_for('add_car_contract') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label class="form-label">Car / Contract Name</label>
+                <input type="text" name="name" required class="form-control" placeholder="e.g. Toyota Camry 2024">
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Lender (Bank / Dealer)</label>
+                    <input type="text" name="lender" class="form-control" placeholder="Optional"></div>
+                <div class="form-group"><label class="form-label">Contract Number</label>
+                    <input type="text" name="contract_number" class="form-control" placeholder="Optional"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Vehicle Price</label>
+                    <input type="number" name="vehicle_price" step="0.01" min="0" class="form-control" placeholder="Optional"></div>
+                <div class="form-group"><label class="form-label">Down Payment</label>
+                    <input type="number" name="down_payment" step="0.01" min="0" value="0" class="form-control"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Monthly Installment</label>
+                    <input type="number" name="monthly_installment" step="0.01" min="0.01" required class="form-control"></div>
+                <div class="form-group"><label class="form-label">Number of Installments</label>
+                    <input type="number" name="num_installments" min="1" max="360" step="1" required class="form-control" placeholder="e.g. 48"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">First Due Date</label>
+                    <input type="date" name="first_due_date" value="{{ today }}" required class="form-control"></div>
+                <div class="form-group"><label class="form-label">Final / Balloon Payment</label>
+                    <input type="number" name="final_payment" step="0.01" min="0" value="0" class="form-control"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Rate % p.a. (optional)</label>
+                    <input type="number" name="interest_rate" step="0.01" min="0" class="form-control"></div>
+                <div class="form-group"><label class="form-label">Usually Paid From</label>
+                    <select name="account_id" class="form-control">
+                        <option value="">— choose when paying —</option>
+                        {% for acc in accounts %}<option value="{{ acc.id }}">{{ acc.name }}</option>{% endfor %}
+                    </select></div>
+            </div>
+            <div class="form-group"><label class="form-label">Notes</label>
+                <input type="text" name="notes" maxlength="255" class="form-control" placeholder="Optional"></div>
+            <button type="submit" class="btn btn-primary btn-block" id="contractSubmit">Save Contract</button>
+        </form>
+    </div>
+</div>
+
+<!-- Record Payment Modal -->
+<div id="payModal" class="modal-backdrop" style="display: none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title" id="payModalTitle">Record Payment</h3>
+            <button class="modal-close" type="button" onclick="closeModal('payModal')">✕</button>
+        </div>
+        <form method="POST" id="payForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Amount</label>
+                    <input type="number" name="amount" step="0.01" min="0.01" required class="form-control"></div>
+                <div class="form-group"><label class="form-label">Date</label>
+                    <input type="date" name="date" value="{{ today }}" required class="form-control"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">Type</label>
+                    <select name="kind" class="form-control">
+                        <option value="installment">Monthly installment</option>
+                        <option value="extra">Extra payment (early settlement)</option>
+                        <option value="final">Final / balloon payment</option>
+                    </select></div>
+                <div class="form-group"><label class="form-label">Pay From</label>
+                    <select name="account_id" required class="form-control" id="payAccount">
+                        {% for acc in accounts %}<option value="{{ acc.id }}">{{ acc.name }} ({{ "%.2f"|format(acc.balance) }})</option>{% endfor %}
+                    </select></div>
+            </div>
+            <div class="form-group"><label class="form-label">Note</label>
+                <input type="text" name="note" maxlength="255" class="form-control" placeholder="Optional"></div>
+            <p style="font-size: 12px; color: var(--gray-500); margin-bottom: 12px;">This is added to your expenses (category “Car Payment”) and deducted from the account.</p>
+            <button type="submit" class="btn btn-success btn-block">Record Payment</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const ADD_URL = "{{ url_for('add_car_contract') }}";
+    const EDIT_URL = "{{ url_for('edit_car_contract', contract_id=0) }}";
+    const PAY_URL = "{{ url_for('pay_car_contract', contract_id=0) }}";
+
+    function openContractModal(btn) {
+        const form = document.getElementById('contractForm');
+        form.reset();
+        if (btn) {
+            const d = JSON.parse(btn.dataset.contract);
+            form.action = EDIT_URL.replace(/0$/, d.id);
+            document.getElementById('contractModalTitle').textContent = 'Edit Contract';
+            for (const [k, v] of Object.entries(d)) {
+                if (form.elements[k]) form.elements[k].value = v;
+            }
+        } else {
+            form.action = ADD_URL;
+            document.getElementById('contractModalTitle').textContent = 'Add Car Contract';
+        }
+        openModal('contractModal');
+    }
+
+    function openPayModal(btn) {
+        const d = JSON.parse(btn.dataset.pay);
+        const form = document.getElementById('payForm');
+        form.action = PAY_URL.replace(/0$/, d.id);
+        document.getElementById('payModalTitle').textContent = 'Record Payment – ' + d.name;
+        form.elements.amount.value = d.amount || '';
+        form.elements.kind.value = d.final ? 'final' : 'installment';
+        if (d.account_id) form.elements.account_id.value = d.account_id;
+        openModal('payModal');
+    }
+</script>
+{% endblock %}

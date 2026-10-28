@@ -1,4 +1,9 @@
 import os
+
+# Must be set before `app` is imported: the database engine is bound at import time,
+# so overriding the config afterwards would run tests (and drop_all) on the real database.
+os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
+
 import pytest
 from app import app as flask_app
 from models import db, User
@@ -50,3 +55,8 @@ def csrf_token(client):
         return original_post(*args, **kwargs)
 
     client.post = post
+
+
+@pytest.fixture(autouse=True)
+def _never_touch_real_database(app):
+    assert db.engine.url.database == ':memory:', 'tests must use an in-memory database'

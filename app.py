@@ -2664,6 +2664,195 @@ def admin_clear_all_chat():
     return redirect(url_for('admin'))
 
 
+# ============ CAR PAYMENTS ============
+CAR_CATEGORY = 'Car Payment'
+
+
+def _car_form_values():
+    """Parse and validate the contract form. Returns (values, error)."""
+    f = request.form
+
+    def num(key, default=None):
+        raw = (f.get(key) or '').strip()
+        return float(raw) if raw else default
+
+    try:
+        values = {
+            'name': (f.get('name') or '').strip(),
+            'lender': (f.get('lender') or '').strip() or None,
+            'contract_number': (f.get('contract_number') or '').strip() or None,
+            'vehicle_price': num('vehicle_price'),
+            'down_payment': num('down_payment', 0.0),
+            'monthly_installment': num('monthly_installment'),
+            'num_installments': int(f.get('num_installments') or 0),
+            'first_due_date': datetime.strptime(f.get('first_due_date', ''), '%Y-%m-%d').date(),
+            'final_payment': num('final_payment', 0.0),
+            'interest_rate': num('interest_rate'),
+            'notes': (f.get('notes') or '').strip() or None,
+        }
+    except (ValueError, TypeError):
+        return None, 'Please check the numbers and dates you entered.'
+
+    if not values['name']:
+        return None, 'Give the contract a name.'
+    if not values['monthly_installment'] or values['monthly_installment'] <= 0:
+        return None, 'Monthly installment must be greater than zero.'
+    if not 1 <= values['num_installments'] <= 360:
+        return None, 'Number of installments must be between 1 and 360.'
+    if any(v is not None and v < 0 for k, v in values.items()
+           if k in ('vehicle_price', 'down_payment', 'final_payment', 'interest_rate')):
+        return None, 'Amounts cannot be negative.'
+
+    account_id = f.get('account_id')
+    values['account_id'] = None
+    if account_id:
+        acct = db.session.get(Account, int(account_id)) if account_id.isdigit() else None
+        if not acct or acct.user_id != current_user.id:
+            return None, 'Invalid account.'
+        values['account_id'] = acct.id
+    return values, None
+
+
+def _get_car_contract(contract_id):
+    from models import CarContract
+    contract = db.session.get(CarContract, contract_id)
+    if not contract or contract.user_id != current_user.id:
+        return None
+    return contract
+
+
+@app.route('/car-payments')
+@login_required
+def car_payments():
+    from models import CarContract
+    from services.car_service import summarize
+    contracts = CarContract.query.filter_by(user_id=current_user.id).order_by(CarContract.created_at.desc()).all()
+    accounts = Account.query.filter_by(user_id=current_user.id).all()
+    items = [{'c': c, 's': summarize(c)} for c in contracts]
+    return render_template('car_payments.html',
+        active_page='car_payments',
+        items=items,
+        accounts=accounts,
+        total_remaining=sum(i['s']['remaining'] for i in items),
+        total_paid=sum(i['s']['paid'] for i in items),
+        monthly_total=sum(i['c'].monthly_installment for i in items if not i['s']['is_complete']),
+        overdue_total=sum(i['s']['overdue_count'] for i in items),
+        today=date.today().isoformat()
+    )
+
+
+@app.route('/car-payments/add', methods=['POST'])
+@login_required
+def add_car_contract():
+    from models import CarContract
+    values, error = _car_form_values()
+    if error:
+        flash(error, 'error')
+        return redirect(url_for('car_payments'))
+    db.session.add(CarContract(user_id=current_user.id, **values))
+    db.session.commit()
+    flash(f"Contract '{values['name']}' added.", 'success')
+    return redirect(url_for('car_payments'))
+
+
+@app.route('/car-payments/edit/<int:contract_id>', methods=['POST'])
+@login_required
+def edit_car_contract(contract_id):
+    contract = _get_car_contract(contract_id)
+    if not contract:
+        flash('Contract not found.', 'error')
+        return redirect(url_for('car_payments'))
+    values, error = _car_form_values()
+    if error:
+        flash(error, 'error')
+        return redirect(url_for('car_payments'))
+    for key, value in values.items():
+        setattr(contract, key, value)
+    db.session.commit()
+    flash('Contract updated.', 'success')
+    return redirect(url_for('car_payments'))
+
+
+@app.route('/car-payments/delete/<int:contract_id>', methods=['POST'])
+@login_required
+def delete_car_contract(contract_id):
+    contract = _get_car_contract(contract_id)
+    if not contract:
+        flash('Contract not found.', 'error')
+    else:
+        # Expenses already recorded stay in your transactions and account balances.
+        db.session.delete(contract)
+        db.session.commit()
+        flash('Contract deleted. Payments already posted remain in your expenses.', 'success')
+    return redirect(url_for('car_payments'))
+
+
+@app.route('/car-payments/pay/<int:contract_id>', methods=['POST'])
+@login_required
+def pay_car_contract(contract_id):
+    """Record a payment: posts an expense and deducts it from the chosen account."""
+    from models import CarPayment
+    contract = _get_car_contract(contract_id)
+    if not contract:
+        flash('Contract not found.', 'error')
+        return redirect(url_for('car_payments'))
+
+    try:
+        amount = float(request.form.get('amount', ''))
+        pay_date = datetime.strptime(request.form.get('date', ''), '%Y-%m-%d').date()
+        account_id = int(request.form.get('account_id', ''))
+    except ValueError:
+        flash('Please check the amount, date and account.', 'error')
+        return redirect(url_for('car_payments'))
+
+    kind = request.form.get('kind', 'installment')
+    if kind not in ('installment', 'extra', 'final'):
+        kind = 'installment'
+    account = db.session.get(Account, account_id)
+    if amount <= 0 or not account or account.user_id != current_user.id:
+        flash('Enter a positive amount and a valid account.', 'error')
+        return redirect(url_for('car_payments'))
+
+    labels = {'installment': 'installment', 'extra': 'extra payment', 'final': 'final payment'}
+    transaction = Transaction(
+        user_id=current_user.id, date=pay_date, amount=amount, type='expense',
+        category=CAR_CATEGORY, account_id=account.id,
+        description=f"{contract.name} - {labels[kind]}",
+    )
+    db.session.add(transaction)
+    db.session.flush()
+    account.balance -= amount
+    db.session.add(CarPayment(
+        contract_id=contract.id, date=pay_date, amount=amount, kind=kind,
+        note=(request.form.get('note') or '').strip() or None, transaction_id=transaction.id,
+    ))
+    db.session.commit()
+    flash(f'Payment of {amount:.2f} SAR recorded for {contract.name}.', 'success')
+    return redirect(url_for('car_payments'))
+
+
+@app.route('/car-payments/payment/delete/<int:payment_id>', methods=['POST'])
+@login_required
+def delete_car_payment(payment_id):
+    """Remove a payment and reverse its expense and balance change."""
+    from models import CarPayment
+    payment = db.session.get(CarPayment, payment_id)
+    if not payment or payment.contract.user_id != current_user.id:
+        flash('Payment not found.', 'error')
+        return redirect(url_for('car_payments'))
+
+    transaction = db.session.get(Transaction, payment.transaction_id) if payment.transaction_id else None
+    if transaction and transaction.user_id == current_user.id:
+        account = db.session.get(Account, transaction.account_id)
+        if account:
+            account.balance += transaction.amount
+        db.session.delete(transaction)
+    db.session.delete(payment)
+    db.session.commit()
+    flash('Payment removed and the expense reversed.', 'success')
+    return redirect(url_for('car_payments'))
+
+
 if __name__ == '__main__':
     # Debug mode exposes an interactive debugger; keep it off unless explicitly enabled,
     # and bind to localhost by default. Set FLASK_HOST=0.0.0.0 to reach it from your phone.

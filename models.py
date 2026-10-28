@@ -312,3 +312,42 @@ class RecurringTemplate(db.Model):
             'last_generated': self.last_generated.isoformat() if self.last_generated else None,
             'is_paused': self.is_paused
         }
+
+
+class CarContract(db.Model):
+    """A vehicle finance/lease contract paid in instalments."""
+    __tablename__ = 'car_contracts'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)          # e.g. "Toyota Camry 2024"
+    lender = db.Column(db.String(100), nullable=True)         # bank / dealer
+    contract_number = db.Column(db.String(60), nullable=True)
+    vehicle_price = db.Column(db.Float, nullable=True)
+    down_payment = db.Column(db.Float, default=0.0)
+    monthly_installment = db.Column(db.Float, nullable=False)
+    num_installments = db.Column(db.Integer, nullable=False)
+    first_due_date = db.Column(db.Date, nullable=False)
+    final_payment = db.Column(db.Float, default=0.0)          # balloon / residual due after the last instalment
+    interest_rate = db.Column(db.Float, nullable=True)        # informational (% p.a.)
+    account_id = db.Column(db.Integer, db.ForeignKey('accounts.id'), nullable=True)  # default pay-from account
+    notes = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    payments = db.relationship('CarPayment', backref='contract', lazy=True,
+                               cascade='all, delete-orphan', order_by='CarPayment.date')
+    account = db.relationship('Account')
+    user = db.relationship('User', backref='car_contracts')
+
+
+class CarPayment(db.Model):
+    __tablename__ = 'car_payments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    contract_id = db.Column(db.Integer, db.ForeignKey('car_contracts.id'), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    kind = db.Column(db.String(15), nullable=False, default='installment')  # installment, extra, final
+    note = db.Column(db.String(255), nullable=True)
+    transaction_id = db.Column(db.Integer, db.ForeignKey('transactions.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
