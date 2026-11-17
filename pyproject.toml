@@ -19,3 +19,6 @@ dependencies = [
 
 [dependency-groups]
 dev = ["workers-py", "workers-runtime-sdk"]
+
+[tool.uv.scripts]
+build = "python -c 'import app; print(\"Build OK\")'"
