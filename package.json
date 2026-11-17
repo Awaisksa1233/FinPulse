@@ -1,0 +1,18 @@
+{
+  "name": "finpulse",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "FinPulse Personal Financial Dashboard",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "build": "echo 'Build OK'",
+    "db:migrate": "wrangler d1 migrations apply finpulse"
+  },
+  "dependencies": {
+    "hono": "^4.6.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.80.0"
+  }
+}

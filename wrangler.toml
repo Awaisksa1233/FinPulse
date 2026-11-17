@@ -1,8 +1,34 @@
 name = "finpulse"
-main = "app.py"
+main = "src/index.js"
 compatibility_date = "2026-05-23"
-compatibility_flags = ["python_workers"]
 
-# Set the DATABASE_URL secret on Cloudflare using:
-# npx wrangler secret put DATABASE_URL
+[[d1_databases]]
+binding = "DB"
+database_name = "finpulse"
+database_id = "YOUR_D1_DATABASE_ID"
 
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "YOUR_KV_NAMESPACE_ID"
+
+[vars]
+APP_NAME = "FinPulse"
+
+# Secrets (set via: wrangler secret put SECRET_KEY)
+# SECRET_KEY       — random string for signing sessions
+# GROQ_API_KEY     — your Groq API key
+# TELEGRAM_BOT_TOKEN — optional, for Telegram bot
+# ADMIN_PIN        — 4-6 digit admin access pin
+
+# Cron triggers
+[triggers]
+crons = ["0 0 * * *", "0 * * * *"]
+
+# Static assets (PWA files)
+[site]
+bucket = "./static"
+
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
+fallthrough = true
