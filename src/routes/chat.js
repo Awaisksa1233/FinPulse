@@ -3,6 +3,7 @@ import { db } from '../db.js';
 import { getSession, getFlash, setFlash } from '../auth.js';
 import { chatPage } from '../templates/chat.js';
 import { processChat } from '../services/ai.js';
+import { currentBudgetMonth, getBudgetMonth } from '../utils/date.js';
 
 export const chatRouter = new Hono();
 
@@ -61,7 +62,7 @@ const handleChat = async (c) => {
 
   // Get financial context for AI
   const now = new Date();
-  const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const month = currentBudgetMonth(user.salary_day || 28);
   const [accounts, { income, expenses }, categorySpend] = await Promise.all([
     d.getAccounts(user.id),
     d.getMonthlyTotals(user.id, month),
@@ -129,7 +130,7 @@ chatRouter.post('/api/chat/clear', handleChatClear);
 
 async function executeAIAction(action, user, d, kv, token) {
   const today = new Date().toISOString().split('T')[0];
-  const budget_month = today.substring(0, 7);
+  const budget_month = action.budget_month || getBudgetMonth(action.date || today, user.salary_day || 28);
 
   if (action.action === 'transaction') {
     const { type, amount, category, description, account_name } = action;

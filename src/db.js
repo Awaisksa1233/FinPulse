@@ -18,8 +18,38 @@ export const db = (DB) => ({
     return r.id;
   },
   async getAllUsers() {
-    const r = await DB.prepare('SELECT id,email,full_name,is_admin,created_at FROM users ORDER BY created_at DESC').all();
+    const r = await DB.prepare('SELECT id,email,full_name,is_admin,created_at,salary_day FROM users ORDER BY created_at DESC').all();
     return r.results;
+  },
+  async updateUserSettings(userId, { salary_day, full_name }) {
+    const fields = [];
+    const params = [];
+    if (salary_day !== undefined) {
+      fields.push('salary_day = ?');
+      params.push(Math.max(1, Math.min(31, parseInt(salary_day, 10) || 28)));
+    }
+    if (full_name !== undefined) {
+      fields.push('full_name = ?');
+      params.push(full_name);
+    }
+    if (fields.length === 0) return;
+    params.push(userId);
+    await DB.prepare(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`).bind(...params).run();
+  },
+  async reassignBudgetMonths(userId, salaryDay = 28) {
+    const txns = await DB.prepare('SELECT id, date FROM transactions WHERE user_id = ?').bind(userId).all();
+    for (const t of (txns.results || [])) {
+      const parts = t.date.slice(0, 10).split('-').map(Number);
+      let year = parts[0];
+      let month = parts[1];
+      const day = parts[2] || 1;
+      if (day >= salaryDay) {
+        month += 1;
+        if (month > 12) { month = 1; year += 1; }
+      }
+      const bMonth = `${year}-${String(month).padStart(2, '0')}`;
+      await DB.prepare('UPDATE transactions SET budget_month = ? WHERE id = ?').bind(bMonth, t.id).run();
+    }
   },
 
   // ── Accounts ───────────────────────────────────────────────────────

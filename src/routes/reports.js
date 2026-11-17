@@ -3,6 +3,7 @@ import { db } from '../db.js';
 import { getSession, getFlash } from '../auth.js';
 import { reportsPage } from '../templates/reports.js';
 import { generateStoryReport } from '../services/ai.js';
+import { currentBudgetMonth } from '../utils/date.js';
 
 export const reportsRouter = new Hono();
 
@@ -14,16 +15,11 @@ async function requireUser(c) {
   return { session, user };
 }
 
-function currentMonth() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-}
-
 reportsRouter.get('/reports', async (c) => {
   const { redirect, session, user } = await requireUser(c);
   if (redirect) return c.redirect(redirect);
 
-  const month = c.req.query('month') || currentMonth();
+  const month = c.req.query('month') || currentBudgetMonth(user.salary_day || 28);
 
   const d = db(c.env.DB);
   const [accounts, { income, expenses }, categorySpend, flash] = await Promise.all([
@@ -84,7 +80,7 @@ reportsRouter.get('/api/story', async (c) => {
   const user = await db(c.env.DB).getUserById(session.userId);
   if (!user) return c.json({ error: 'User not found' }, 404);
 
-  const month = c.req.query('month') || currentMonth();
+  const month = c.req.query('month') || currentBudgetMonth(user.salary_day || 28);
   const d = db(c.env.DB);
   const [{ income, expenses }, categorySpend, recentTxns] = await Promise.all([
     d.getMonthlyTotals(user.id, month),

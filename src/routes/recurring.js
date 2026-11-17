@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { db } from '../db.js';
 import { getSession, getFlash, setFlash } from '../auth.js';
 import { recurringPage } from '../templates/recurring.js';
+import { getBudgetMonth } from '../utils/date.js';
 
 export const recurringRouter = new Hono();
 
@@ -93,14 +94,14 @@ export async function processRecurringTemplates(env) {
 
   // Get all templates due today or earlier
   const { results } = await env.DB.prepare(
-    `SELECT rt.*, u.id as uid FROM recurring_templates rt
+    `SELECT rt.*, u.id as uid, u.salary_day FROM recurring_templates rt
      JOIN users u ON u.id = rt.user_id
      WHERE rt.next_date <= ? AND rt.is_active = 1`
   ).bind(today).all();
 
   for (const t of results) {
     // Create transaction
-    const budget_month = today.substring(0, 7);
+    const budget_month = getBudgetMonth(today, t.salary_day || 28);
     await d.createTransaction({
       user_id: t.user_id, type: t.type, amount: t.amount,
       account_id: t.account_id, category: t.category,

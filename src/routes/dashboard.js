@@ -3,6 +3,7 @@ import { db } from '../db.js';
 import { getSession, getFlash } from '../auth.js';
 import { dashboardPage } from '../templates/dashboard.js';
 import { generateAISummary } from '../services/ai.js';
+import { currentBudgetMonth } from '../utils/date.js';
 
 export const dashboardRouter = new Hono();
 
@@ -14,8 +15,7 @@ const handleDashboard = async (c) => {
   const user = await d.getUserById(session.userId);
   if (!user) return c.redirect('/login');
 
-  const now = new Date();
-  const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const month = c.req.query('month') || currentBudgetMonth(user.salary_day || 28);
 
   const [accounts, { income, expenses }, recentTransactions, budgets, flash] = await Promise.all([
     d.getAccounts(user.id),
@@ -65,8 +65,7 @@ dashboardRouter.get('/api/summary', async (c) => {
   const user = await d.getUserById(session.userId);
   if (!user) return c.json({ error: 'User not found' }, 404);
 
-  const now = new Date();
-  const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const month = c.req.query('month') || currentBudgetMonth(user.salary_day || 28);
   const [{ income, expenses }, categorySpend, accounts] = await Promise.all([
     d.getMonthlyTotals(user.id, month),
     d.getCategorySpend(user.id, month),

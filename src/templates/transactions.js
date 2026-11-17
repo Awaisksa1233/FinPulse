@@ -22,7 +22,10 @@ export function transactionsPage({ user, transactionType, accounts = [], transac
           </svg>
         </div>
         <div>
-          <div class="transaction-category">${esc(t.category)}</div>
+          <div class="transaction-category" style="display:flex;align-items:center;gap:6px;">
+            <span>${esc(t.category)}</span>
+            ${t.budget_month ? `<span style="background:rgba(99,102,241,0.12);color:var(--primary);font-size:10px;padding:1px 6px;border-radius:4px;font-weight:600;" title="Budget Month">${esc(t.budget_month)}</span>` : ''}
+          </div>
           <div class="transaction-meta">${esc(t.date)}${t.description ? ' • ' + esc(t.description) : ''}${t.account_name ? ' • ' + esc(t.account_name) : ''}</div>
         </div>
       </div>
@@ -104,9 +107,21 @@ export function transactionsPage({ user, transactionType, accounts = [], transac
                 </div>
               </div>
 
-              <div class="form-group">
-                <label class="form-label">Description / Note (optional)</label>
-                <input type="text" name="description" class="form-control" placeholder="e.g. Al Baik dinner, Uber trip, Monthly salary…">
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Description / Note (optional)</label>
+                  <input type="text" name="description" class="form-control" placeholder="e.g. Al Baik dinner, Uber trip, Monthly salary…">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" style="display:flex;justify-content:space-between;align-items:center;">
+                    <span>Budget Month</span>
+                    <span style="font-size:11px;color:var(--text-muted);font-weight:normal;">Auto (Salary day: ${user?.salary_day || 28}th)</span>
+                  </label>
+                  <input type="month" name="budget_month" class="form-control" title="Leave blank to calculate automatically based on your salary cycle">
+                  <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:4px;">
+                    Auto: On/after day ${user?.salary_day || 28}, counts toward next month's budget.
+                  </span>
+                </div>
               </div>
 
               <button type="submit" class="btn ${isIncome ? 'btn-success' : 'btn-danger'}" style="width:100%;">

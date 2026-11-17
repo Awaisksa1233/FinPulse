@@ -10,6 +10,7 @@ import { chatRouter } from './routes/chat.js';
 import { reportsRouter } from './routes/reports.js';
 import { telegramRouter } from './routes/telegram.js';
 import { adminRouter } from './routes/admin.js';
+import { settingsRouter } from './routes/settings.js';
 import { processRecurringTemplates } from './routes/recurring.js';
 import { sendDailyReports } from './routes/telegram.js';
 import { shortcutPage } from './templates/shortcut.js';
@@ -59,6 +60,7 @@ app.route('/', chatRouter);
 app.route('/', reportsRouter);
 app.route('/', telegramRouter);
 app.route('/', adminRouter);
+app.route('/', settingsRouter);
 
 // ── Root static shortcuts ──────────────────────────────────────────
 app.get('/manifest.json', (c) => c.redirect('/static/manifest.json'));

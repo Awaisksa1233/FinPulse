@@ -4,6 +4,7 @@ import { getSession, getFlash, setFlash, generateLinkCode } from '../auth.js';
 import { telegramPage } from '../templates/telegram.js';
 import { tgApi, formatTelegramMessage } from '../services/telegram.js';
 import { processChat } from '../services/ai.js';
+import { currentBudgetMonth, getBudgetMonth } from '../utils/date.js';
 
 export const telegramRouter = new Hono();
 
@@ -127,8 +128,7 @@ const handleWebhook = async (c) => {
   }
 
   if (text === '/summary') {
-    const now = new Date();
-    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const month = currentBudgetMonth(user.salary_day || 28);
     const { income, expenses } = await d.getMonthlyTotals(user.id, month);
     const net = income - expenses;
     const msg = `📊 *${month} Summary*\n\n✅ Income: SAR ${income.toFixed(2)}\n❌ Expenses: SAR ${expenses.toFixed(2)}\n${net >= 0 ? '💚' : '🔴'} Net: SAR ${net.toFixed(2)}`;
@@ -146,7 +146,7 @@ const handleWebhook = async (c) => {
   // AI processing for natural language
   const history = await d.getChatHistory(user.id, 6);
   const now = new Date();
-  const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const month = currentBudgetMonth(user.salary_day || 28);
   const [accounts, { income, expenses }, categorySpend] = await Promise.all([
     d.getAccounts(user.id),
     d.getMonthlyTotals(user.id, month),
@@ -190,7 +190,7 @@ telegramRouter.post('/telegram/set-webhook', (c) => c.redirect('/telegram'));
 
 async function executeTelegramAction(action, user, d) {
   const today = new Date().toISOString().split('T')[0];
-  const budget_month = today.substring(0, 7);
+  const budget_month = action.budget_month || getBudgetMonth(action.date || today, user.salary_day || 28);
 
   if (action.action === 'transaction') {
     const { type, amount, category, description, account_name } = action;
@@ -220,15 +220,15 @@ export async function sendDailyReports(env) {
 
   const now = new Date();
   const timeStr = `${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}`;
-  const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
   const { results } = await env.DB.prepare(
     `SELECT * FROM telegram_users WHERE daily_report_enabled = 1 AND daily_report_time = ?`
   ).bind(timeStr).all();
 
   for (const tgUser of results) {
-    const { income, expenses } = await d.getMonthlyTotals(tgUser.user_id, month);
     const user = await d.getUserById(tgUser.user_id);
+    const month = currentBudgetMonth(user?.salary_day || 28);
+    const { income, expenses } = await d.getMonthlyTotals(tgUser.user_id, month);
     const accounts = await d.getAccounts(tgUser.user_id);
     const totalBalance = accounts.reduce((s, a) => s + a.balance, 0);
     const msg = formatTelegramMessage('daily_summary', {

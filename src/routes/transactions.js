@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { db } from '../db.js';
 import { getSession, getFlash, setFlash } from '../auth.js';
 import { transactionsPage } from '../templates/transactions.js';
+import { getBudgetMonth } from '../utils/date.js';
 
 export const transactionsRouter = new Hono();
 
@@ -68,7 +69,10 @@ const handleAddTransaction = async (c) => {
   const category = (body.category || 'Other').toString().trim();
   const description = (body.description || '').toString().trim();
   const date = (body.date || new Date().toISOString().split('T')[0]).toString();
-  const budget_month = date.substring(0, 7);
+  const customBudgetMonth = body.budget_month?.toString().trim();
+  const budget_month = (customBudgetMonth && /^\d{4}-\d{2}$/.test(customBudgetMonth))
+    ? customBudgetMonth
+    : getBudgetMonth(date, user.salary_day || 28);
 
   const accounts = await db(c.env.DB).getAccounts(user.id);
   if (!account_id && accounts.length > 0) {

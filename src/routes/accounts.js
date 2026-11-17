@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { db } from '../db.js';
 import { getSession, getFlash, setFlash } from '../auth.js';
 import { accountsPage } from '../templates/accounts.js';
+import { getBudgetMonth } from '../utils/date.js';
 
 export const accountsRouter = new Hono();
 
@@ -134,7 +135,7 @@ accountsRouter.post('/transfer', async (c) => {
 
   const d = db(c.env.DB);
   const date = new Date().toISOString().split('T')[0];
-  const budget_month = date.substring(0, 7);
+  const budget_month = getBudgetMonth(date, user.salary_day || 28);
 
   // Create matching transactions
   await d.createTransaction({ user_id: user.id, type: 'transfer_out', amount, account_id: from_id, category: 'Transfer', description, date, budget_month });

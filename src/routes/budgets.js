@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { db } from '../db.js';
 import { getSession, getFlash, setFlash } from '../auth.js';
 import { budgetsPage } from '../templates/budgets.js';
+import { currentBudgetMonth } from '../utils/date.js';
 
 export const budgetsRouter = new Hono();
 
@@ -17,8 +18,7 @@ budgetsRouter.get('/budgets', async (c) => {
   const { redirect, session, user } = await requireUser(c);
   if (redirect) return c.redirect(redirect);
 
-  const now = new Date();
-  const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const month = currentBudgetMonth(user.salary_day || 28);
 
   const d = db(c.env.DB);
   const [budgets, spendingMap, flash] = await Promise.all([
@@ -74,8 +74,7 @@ const handleBudgetSuggestions = async (c) => {
   const user = await db(c.env.DB).getUserById(session.userId);
   if (!user) return c.json({ error: 'User not found' }, 404);
 
-  const now = new Date();
-  const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const month = currentBudgetMonth(user.salary_day || 28);
   const [categorySpend, budgets] = await Promise.all([
     db(c.env.DB).getCategorySpend(user.id, month),
     db(c.env.DB).getBudgets(user.id),
