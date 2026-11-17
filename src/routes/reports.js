@@ -63,7 +63,7 @@ reportsRouter.get('/api/story', async (c) => {
     d.getRecentTransactions(user.id, 10),
   ]);
 
-  const story = await generateStoryReport(c.env.GROQ_API_KEY, {
+  const story = await generateStoryReport(c.env.OPENROUTER_API_KEY || c.env.GROQ_API_KEY, {
     month, income, expenses, categorySpend, recentTxns, name: user.full_name || user.email
   });
 

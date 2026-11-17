@@ -66,7 +66,7 @@ dashboardRouter.get('/api/summary', async (c) => {
     d.getAccounts(user.id),
   ]);
 
-  const summary = await generateAISummary(c.env.GROQ_API_KEY, {
+  const summary = await generateAISummary(c.env.OPENROUTER_API_KEY || c.env.GROQ_API_KEY, {
     income, expenses, categorySpend, accounts, month,
   });
 

@@ -61,7 +61,7 @@ chatRouter.post('/chat', async (c) => {
   let reply = '';
 
   try {
-    const result = await processChat(c.env.GROQ_API_KEY, history, message, context);
+    const result = await processChat(c.env.OPENROUTER_API_KEY || c.env.GROQ_API_KEY, history, message, context);
 
     // Check if AI returned an action JSON
     if (result && typeof result === 'object' && result.action) {

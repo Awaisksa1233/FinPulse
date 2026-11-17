@@ -161,7 +161,7 @@ telegramRouter.post('/telegram/webhook', async (c) => {
 
   let reply = 'Sorry, I had trouble with that.';
   try {
-    const result = await processChat(c.env.GROQ_API_KEY, history, text, context);
+    const result = await processChat(c.env.OPENROUTER_API_KEY || c.env.GROQ_API_KEY, history, text, context);
     if (result && typeof result === 'object' && result.action) {
       reply = await executeTelegramAction(result, user, d);
     } else {

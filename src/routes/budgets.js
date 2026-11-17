@@ -74,6 +74,6 @@ budgetsRouter.get('/api/budget-suggestions', async (c) => {
   ]);
 
   const { generateBudgetSuggestions } = await import('../services/ai.js');
-  const suggestions = await generateBudgetSuggestions(c.env.GROQ_API_KEY, { categorySpend, budgets });
+  const suggestions = await generateBudgetSuggestions(c.env.OPENROUTER_API_KEY || c.env.GROQ_API_KEY, { categorySpend, budgets });
   return c.json({ suggestions });
 });
