@@ -9,7 +9,7 @@ database_id = "fae221b2-18f9-4de6-8ab9-07b8dcb58488"
 
 [[kv_namespaces]]
 binding = "SESSIONS"
-id = "YOUR_KV_NAMESPACE_ID"
+id = "ac5d9015020b4890bae52ec46f60bcf3"
 
 [vars]
 APP_NAME = "FinPulse"

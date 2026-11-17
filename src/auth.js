@@ -55,28 +55,60 @@ function generateLinkCode() {
 
 async function createSession(SESSIONS, userId, remember = true) {
   const token = generateToken();
-  const ttl = remember ? SESSION_TTL : 3600;
+  const ttl = (remember && remember !== false) ? SESSION_TTL : 3600;
   await SESSIONS.put(`session:${token}`, JSON.stringify({ userId, createdAt: Date.now() }), { expirationTtl: ttl });
-  return { token, ttl };
+  return { token, ttl, header: setCookieHeader(token, ttl) };
 }
 
-async function getSession(SESSIONS, request) {
-  const cookie = request.headers.get('cookie') || '';
-  const match = cookie.match(new RegExp(`${COOKIE_NAME}=([^;]+)`));
-  if (!match) return null;
-  const token = match[1];
+function extractToken(tokenOrRequestOrC) {
+  if (!tokenOrRequestOrC) return null;
+  if (typeof tokenOrRequestOrC === 'string') return tokenOrRequestOrC;
+  const cookieStr =
+    tokenOrRequestOrC.req?.header?.('cookie') ||
+    tokenOrRequestOrC.req?.raw?.headers?.get?.('cookie') ||
+    tokenOrRequestOrC.headers?.get?.('cookie') ||
+    '';
+  const match = cookieStr.match(new RegExp(`${COOKIE_NAME}=([^;]+)`));
+  return match ? match[1] : null;
+}
+
+async function getSession(cOrSessions, maybeRequest) {
+  let SESSIONS;
+  let token;
+  if (cOrSessions && cOrSessions.env && cOrSessions.env.SESSIONS) {
+    SESSIONS = cOrSessions.env.SESSIONS;
+    token = extractToken(cOrSessions);
+  } else {
+    SESSIONS = cOrSessions;
+    token = extractToken(maybeRequest);
+  }
+  if (!SESSIONS || !token) return null;
   const data = await SESSIONS.get(`session:${token}`);
   if (!data) return null;
-  return JSON.parse(data);
+  try {
+    const parsed = JSON.parse(data);
+    return { token, ...parsed };
+  } catch (e) {
+    return null;
+  }
 }
 
-async function destroySession(SESSIONS, request) {
-  const cookie = request.headers.get('cookie') || '';
-  const match = cookie.match(new RegExp(`${COOKIE_NAME}=([^;]+)`));
-  if (match) await SESSIONS.delete(`session:${match[1]}`);
+async function destroySession(cOrSessions, tokenOrRequest) {
+  let SESSIONS;
+  let token;
+  if (cOrSessions && cOrSessions.env && cOrSessions.env.SESSIONS) {
+    SESSIONS = cOrSessions.env.SESSIONS;
+    token = extractToken(tokenOrRequest) || extractToken(cOrSessions);
+  } else {
+    SESSIONS = cOrSessions;
+    token = extractToken(tokenOrRequest);
+  }
+  if (SESSIONS && token) {
+    await SESSIONS.delete(`session:${token}`);
+  }
 }
 
-function setCookieHeader(token, ttl) {
+function setCookieHeader(token, ttl = SESSION_TTL) {
   const expires = ttl > 0 ? `; Max-Age=${ttl}; Expires=${new Date(Date.now() + ttl * 1000).toUTCString()}` : '';
   return `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax${expires}`;
 }
@@ -87,32 +119,47 @@ function clearCookieHeader() {
 
 // ── Flash Messages (stored in KV) ───────────────────────────────────────────
 
-async function setFlash(SESSIONS, request, messages) {
-  const cookie = request.headers.get('cookie') || '';
-  const match = cookie.match(new RegExp(`${COOKIE_NAME}=([^;]+)`));
-  if (!match) return;
-  const token = match[1];
+async function setFlash(cOrSessions, tokenOrReq, categoryOrMsg, message) {
+  let SESSIONS = cOrSessions?.env?.SESSIONS || cOrSessions;
+  let token = extractToken(tokenOrReq);
+  if (!SESSIONS || !token) return;
   const data = await SESSIONS.get(`session:${token}`);
   if (!data) return;
-  const session = JSON.parse(data);
-  session.flash = messages;
-  await SESSIONS.put(`session:${token}`, JSON.stringify(session), { expirationTtl: SESSION_TTL });
+  try {
+    const session = JSON.parse(data);
+    if (!session.flash) session.flash = [];
+    if (message !== undefined) {
+      session.flash.push({ category: categoryOrMsg, type: categoryOrMsg, message });
+    } else if (Array.isArray(categoryOrMsg)) {
+      session.flash.push(...categoryOrMsg);
+    } else if (typeof categoryOrMsg === 'object') {
+      session.flash.push(categoryOrMsg);
+    } else {
+      session.flash.push({ category: 'info', type: 'info', message: String(categoryOrMsg) });
+    }
+    await SESSIONS.put(`session:${token}`, JSON.stringify(session), { expirationTtl: SESSION_TTL });
+  } catch (e) {
+    console.error('setFlash error:', e);
+  }
 }
 
-async function getFlash(SESSIONS, request) {
-  const cookie = request.headers.get('cookie') || '';
-  const match = cookie.match(new RegExp(`${COOKIE_NAME}=([^;]+)`));
-  if (!match) return [];
-  const token = match[1];
+async function getFlash(cOrSessions, tokenOrReq) {
+  let SESSIONS = cOrSessions?.env?.SESSIONS || cOrSessions;
+  let token = extractToken(tokenOrReq) || (cOrSessions?.req ? extractToken(cOrSessions) : null);
+  if (!SESSIONS || !token) return [];
   const data = await SESSIONS.get(`session:${token}`);
   if (!data) return [];
-  const session = JSON.parse(data);
-  const flash = session.flash || [];
-  if (flash.length) {
-    session.flash = [];
-    await SESSIONS.put(`session:${token}`, JSON.stringify(session), { expirationTtl: SESSION_TTL });
+  try {
+    const session = JSON.parse(data);
+    const flash = session.flash || [];
+    if (flash.length) {
+      session.flash = [];
+      await SESSIONS.put(`session:${token}`, JSON.stringify(session), { expirationTtl: SESSION_TTL });
+    }
+    return flash;
+  } catch (e) {
+    return [];
   }
-  return flash;
 }
 
 export { hashPassword, verifyPassword, generateToken, generateApiToken, generateLinkCode, createSession, getSession, destroySession, setCookieHeader, clearCookieHeader, setFlash, getFlash };

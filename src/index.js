@@ -13,13 +13,33 @@ import { adminRouter } from './routes/admin.js';
 import { processRecurringTemplates } from './routes/recurring.js';
 import { sendDailyReports } from './routes/telegram.js';
 
+import { getAssetFromKV } from '@cloudflare/kv-asset-handler';
+import manifestJSON from '__STATIC_CONTENT_MANIFEST';
+
+const assetManifest = JSON.parse(manifestJSON);
 const app = new Hono();
 
 // ── Static assets ──────────────────────────────────────────────────
 app.get('/static/*', async (c) => {
-  // Serve from the __STATIC_CONTENT binding (Cloudflare Pages-style)
-  // For Workers + wrangler, static assets are served via the site binding
-  return c.notFound();
+  try {
+    return await getAssetFromKV(
+      {
+        request: c.req.raw,
+        waitUntil: (promise) => c.executionCtx.waitUntil(promise),
+      },
+      {
+        ASSET_NAMESPACE: c.env.__STATIC_CONTENT,
+        ASSET_MANIFEST: assetManifest,
+        mapRequestToAsset: (req) => {
+          const url = new URL(req.url);
+          url.pathname = url.pathname.replace(/^\/static/, '');
+          return new Request(url.toString(), req);
+        },
+      }
+    );
+  } catch (e) {
+    return c.notFound();
+  }
 });
 
 // ── Auth routes ─────────────────────────────────────────────────────

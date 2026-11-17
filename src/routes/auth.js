@@ -35,7 +35,8 @@ authRouter.post('/login', async (c) => {
     return c.html(authPage({ mode: 'login', flash: [{ type: 'error', message: 'Invalid email or password.' }] }));
   }
 
-  const { token, header } = await createSession(c.env.SESSIONS, user.id, user.email);
+  const remember = form.get('remember') !== null;
+  const { token, header } = await createSession(c.env.SESSIONS, user.id, remember);
   const res = c.redirect('/');
   res.headers.set('Set-Cookie', header);
   return res;
@@ -59,7 +60,7 @@ authRouter.post('/register', async (c) => {
   const hash = await hashPassword(password);
   const userId = await db(c.env.DB).createUser({ email, password_hash: hash, full_name: fullName });
 
-  const { token, header } = await createSession(c.env.SESSIONS, userId, email);
+  const { token, header } = await createSession(c.env.SESSIONS, userId, true);
   const res = c.redirect('/');
   res.headers.set('Set-Cookie', header);
   return res;
@@ -74,9 +75,10 @@ authRouter.post('/logout', async (c) => {
 });
 
 // Telegram login via code
-authRouter.post('/login/telegram-code', async (c) => {
+const handleTelegramLogin = async (c) => {
   const form = await c.req.formData();
   const code = form.get('code')?.toString().trim().toUpperCase() || '';
+  const remember = form.get('remember') !== null;
 
   if (!code) {
     return c.html(authPage({ mode: 'login', flash: [{ type: 'error', message: 'Please enter the code from Telegram.' }] }));
@@ -96,8 +98,12 @@ authRouter.post('/login/telegram-code', async (c) => {
 
   await c.env.SESSIONS.delete(codeKey);
 
-  const { token, header } = await createSession(c.env.SESSIONS, user.id, user.email);
+  const { token, header } = await createSession(c.env.SESSIONS, user.id, remember);
   const res = c.redirect('/');
   res.headers.set('Set-Cookie', header);
   return res;
-});
+};
+
+authRouter.get('/login/telegram', (c) => c.redirect('/login'));
+authRouter.post('/login/telegram', handleTelegramLogin);
+authRouter.post('/login/telegram-code', handleTelegramLogin);

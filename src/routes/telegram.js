@@ -136,6 +136,13 @@ telegramRouter.post('/telegram/webhook', async (c) => {
     return c.json({ ok: true });
   }
 
+  if (text === '/login') {
+    const code = generateLinkCode();
+    await c.env.SESSIONS.put(`tg_link:${code}`, String(user.id), { expirationTtl: 600 });
+    await tg.sendMessage(chatId, `🔐 *Your Login Code:*\n\`${code}\`\n\nValid for 10 minutes. Enter this code on the FinPulse login page.`, { parse_mode: 'Markdown' });
+    return c.json({ ok: true });
+  }
+
   // AI processing for natural language
   const history = await d.getChatHistory(user.id, 6);
   const now = new Date();
