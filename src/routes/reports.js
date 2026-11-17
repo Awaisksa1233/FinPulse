@@ -26,11 +26,27 @@ reportsRouter.get('/reports', async (c) => {
   const month = c.req.query('month') || currentMonth();
 
   const d = db(c.env.DB);
-  const [{ income, expenses }, categorySpend, flash] = await Promise.all([
+  const [accounts, { income, expenses }, categorySpend, flash] = await Promise.all([
+    d.getAccounts(user.id),
     d.getMonthlyTotals(user.id, month),
     d.getCategorySpend(user.id, month),
     getFlash(c.env.SESSIONS, session.token),
   ]);
+
+  const totalNetWorth = accounts.reduce((s, a) => s + a.balance, 0);
+
+  // Income by category for the month
+  const { results: incomeRows } = await c.env.DB.prepare(
+    `SELECT category, SUM(amount) as total
+     FROM transactions
+     WHERE user_id = ? AND type = 'income' AND budget_month = ?
+     GROUP BY category ORDER BY total DESC`
+  ).bind(user.id, month).all();
+
+  const categoryIncome = {};
+  for (const row of incomeRows) {
+    categoryIncome[row.category] = row.total;
+  }
 
   // Get daily spending for heatmap
   const { results: dailyRows } = await c.env.DB.prepare(
@@ -45,7 +61,17 @@ reportsRouter.get('/reports', async (c) => {
     dailySpend[row.date] = row.total;
   }
 
-  return c.html(reportsPage({ user, month, income, expenses, categorySpend, dailySpend, flash }));
+  return c.html(reportsPage({
+    user,
+    month,
+    income,
+    expenses,
+    totalNetWorth,
+    categorySpend,
+    categoryIncome,
+    dailySpend,
+    flash
+  }));
 });
 
 reportsRouter.get('/report', (c) => c.redirect('/reports'));

@@ -27,15 +27,16 @@ const handleDashboard = async (c) => {
 
   const totalBalance = accounts.reduce((s, a) => s + a.balance, 0);
 
-  // Budget alerts: categories over threshold
+  // Budget alerts & progress
   const spendMap = await d.getCategorySpend(user.id, month);
-  const budgetAlerts = budgets
-    .map(b => ({
-      ...b,
-      spent: spendMap[b.category] || 0,
-      pct: b.monthly_limit > 0 ? (spendMap[b.category] || 0) / b.monthly_limit : 0
-    }))
-    .filter(b => b.pct >= b.alert_threshold);
+  const budgetProgress = budgets.map(b => {
+    const spent = spendMap[b.category] || 0;
+    const pct = b.monthly_limit > 0 ? (spent / b.monthly_limit) : 0;
+    const progress_pct = Math.min(Math.round(pct * 100), 100);
+    const status = pct >= 1 ? 'exceeded' : pct >= (b.alert_threshold || 0.8) ? 'warning' : 'ok';
+    return { ...b, spent, pct, progress_pct, status };
+  });
+  const budgetAlerts = budgetProgress.filter(b => b.pct >= (b.alert_threshold || 0.8));
 
   return c.html(dashboardPage({
     user,
@@ -45,6 +46,8 @@ const handleDashboard = async (c) => {
     totalBalance,
     recentTransactions,
     budgetAlerts,
+    budgetProgress,
+    categorySpend: spendMap,
     flash,
   }));
 };

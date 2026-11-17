@@ -1,28 +1,69 @@
-// Base HTML layout — matches the existing Flask base.html structure exactly
+// Base HTML layout — matches FinPulse design tokens and native Cloudflare Workers shell
 
 export function baseLayout({ title, activePage, content, scripts = '', user, flash = [] }) {
-  const flashHtml = flash.length ? flash.map(f => `
-    <div class="flash ${f.category || 'info'}" style="position:fixed;top:16px;right:16px;z-index:9999;padding:12px 20px;border-radius:10px;background:${f.category === 'error' ? '#dc2626' : '#16a34a'};color:white;box-shadow:0 4px 20px rgba(0,0,0,.3);max-width:320px;">${esc(f.message)}</div>
-  `).join('') : '';
+  const flashHtml = flash.length ? `
+    <div class="toast-container" id="toastContainer">
+      ${flash.map(f => {
+        const isErr = f.category === 'error' || f.type === 'error';
+        return `
+        <div class="toast ${isErr ? 'error' : 'success'}">
+          <div class="toast-icon">${isErr ? '✕' : '✓'}</div>
+          <span class="toast-message">${esc(f.message)}</span>
+          <button class="toast-close" onclick="this.closest('.toast').remove()" aria-label="Close">×</button>
+        </div>`;
+      }).join('')}
+    </div>` : '';
 
-  const navItems = [
-    { href: '/', icon: dashIcon, label: 'Dashboard', page: 'dashboard' },
-    { href: '/reports', icon: reportIcon, label: 'Reports', page: 'reports' },
-    { href: '/chat', icon: chatIcon, label: 'AI Assistant', page: 'chat' },
-    { href: '/income', icon: incomeIcon, label: 'Income', page: 'income' },
-    { href: '/expenses', icon: expenseIcon, label: 'Expenses', page: 'expenses' },
-    { href: '/recurring', icon: recurringIcon, label: 'Recurring', page: 'recurring' },
-    { href: '/accounts', icon: accountIcon, label: 'Accounts', page: 'accounts' },
-    { href: '/budgets', icon: budgetIcon, label: 'Budgets', page: 'budgets' },
-    { href: '/loans', icon: loanIcon, label: 'Loans & Debts', page: 'loans' },
-    { href: '/telegram', icon: tgIcon, label: 'Telegram', page: 'telegram' },
+  const navSections = [
+    {
+      label: 'Overview',
+      items: [
+        { href: '/', icon: dashIcon, label: 'Dashboard', page: 'dashboard' },
+        { href: '/reports', icon: reportIcon, label: 'Reports', page: 'reports' },
+        { href: '/chat', icon: chatIcon, label: 'AI Assistant', page: 'chat' },
+      ]
+    },
+    {
+      label: 'Finances',
+      items: [
+        { href: '/income', icon: incomeIcon, label: 'Income', page: 'income' },
+        { href: '/expenses', icon: expenseIcon, label: 'Expenses', page: 'expenses' },
+        { href: '/recurring', icon: recurringIcon, label: 'Recurring', page: 'recurring' },
+        { href: '/accounts', icon: accountIcon, label: 'Accounts', page: 'accounts' },
+      ]
+    },
+    {
+      label: 'Planning',
+      items: [
+        { href: '/budgets', icon: budgetIcon, label: 'Budgets', page: 'budgets' },
+        { href: '/loans', icon: loanIcon, label: 'Loans & Debts', page: 'loans' },
+      ]
+    },
+    {
+      label: 'Integrations',
+      items: [
+        { href: '/telegram', icon: tgIcon, label: 'Telegram', page: 'telegram' },
+      ]
+    }
   ];
 
-  const sideNav = navItems.map(n => `
-    <a href="${n.href}" class="nav-link ${activePage === n.page ? 'active' : ''}">
-      ${n.icon}
-      <span>${n.label}</span>
-    </a>
+  if (user?.is_admin) {
+    navSections.push({
+      label: 'System',
+      items: [
+        { href: '/admin', icon: adminIcon, label: 'Admin Panel', page: 'admin' },
+      ]
+    });
+  }
+
+  const sideNav = navSections.map(sec => `
+    <span class="nav-section-label">${sec.label}</span>
+    ${sec.items.map(n => `
+      <a href="${n.href}" class="nav-link ${activePage === n.page ? 'active' : ''}">
+        ${n.icon}
+        <span>${n.label}</span>
+      </a>
+    `).join('')}
   `).join('');
 
   const bottomNav = [
@@ -42,47 +83,57 @@ export function baseLayout({ title, activePage, content, scripts = '', user, fla
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>${esc(title)} - FinPulse</title>
+  <meta name="description" content="FinPulse - Intelligent Personal Finance Dashboard">
   <link rel="stylesheet" href="/static/style.css">
   <link rel="manifest" href="/static/manifest.json">
   <meta name="theme-color" content="#1d4ed8">
   <link rel="apple-touch-icon" href="/static/icons/icon-180.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="/static/icons/icon-152.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/icon-180.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="/static/icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <!-- PWA Loading Screen -->
-  <div id="pwaLoader" style="display:none;position:fixed;inset:0;background:#0f172a;z-index:99999;align-items:center;justify-content:center;flex-direction:column;gap:16px;">
-    <div style="width:60px;height:60px;background:linear-gradient(135deg,#1d4ed8,#0d9488);border-radius:16px;display:flex;align-items:center;justify-content:center;">
-      <span style="color:white;font-size:28px;font-weight:700;">F</span>
+  <div id="pwaLoader" class="pwa-loading-screen">
+    <div class="pwa-loading-content">
+      <div style="width:64px;height:64px;background:linear-gradient(135deg,#1d4ed8,#0d9488);border-radius:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;box-shadow:0 8px 32px rgba(37,99,235,.5);color:white;font-weight:800;font-size:28px;">F</div>
+      <div class="pwa-loading-spinner"></div>
     </div>
-    <div style="color:#94a3b8;font-size:14px;">Loading FinPulse…</div>
   </div>
 
   ${flashHtml}
 
   <!-- Mobile Header -->
   <header class="mobile-header">
-    <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-      </svg>
-    </button>
-    <div class="mobile-logo">FinPulse</div>
-    <a href="/chat" style="color:var(--gray-500);display:flex;align-items:center;padding:8px;">
-      ${chatIcon}
-    </a>
+    <div class="mobile-logo">
+      <div style="width:30px;height:30px;background:linear-gradient(135deg,#1d4ed8,#0d9488);border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:15px;flex-shrink:0;box-shadow:0 2px 8px rgba(37,99,235,.4);">F</div>
+      <span class="mobile-logo-text">FinPulse</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <a href="/chat" style="color:var(--sidebar-text);padding:8px;display:flex;align-items:center;" title="AI Assistant">
+        ${chatIcon}
+      </a>
+      <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Toggle navigation">
+        <div class="hamburger-icon">
+          <span></span><span></span><span></span>
+        </div>
+      </button>
+    </div>
   </header>
 
   <!-- Sidebar Overlay -->
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
-  <div class="app-layout">
+  <div class="app-container">
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div class="sidebar-brand">
-          <div style="width:36px;height:36px;background:linear-gradient(135deg,#1d4ed8,#0d9488);border-radius:10px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:16px;flex-shrink:0;">F</div>
+          <div style="width:36px;height:36px;background:linear-gradient(135deg,#1d4ed8,#0d9488);border-radius:10px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:17px;flex-shrink:0;box-shadow:0 4px 12px rgba(37,99,235,.5);">F</div>
           <span class="sidebar-title">FinPulse</span>
         </div>
       </div>
@@ -110,30 +161,32 @@ export function baseLayout({ title, activePage, content, scripts = '', user, fla
 
   <!-- Bottom Nav (mobile) -->
   <nav class="bottom-nav">
-    ${bottomNav}
+    <div class="bottom-nav-items">
+      ${bottomNav}
+    </div>
   </nav>
 
-  <!-- FAB -->
-  <div class="fab-container">
-    <button class="fab" id="fabMain" onclick="toggleFab()">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+  <!-- Floating Action Button (FAB) Speed Dial -->
+  <div class="fab-container" id="fabContainer">
+    <div class="fab-menu" id="fabMenu">
+      <a href="/expenses" class="fab-item" style="--i:1;">
+        <span class="fab-label">Add Expense</span>
+        <div class="fab-icon danger">${expenseIcon}</div>
+      </a>
+      <a href="/income" class="fab-item" style="--i:2;">
+        <span class="fab-label">Add Income</span>
+        <div class="fab-icon success">${incomeIcon}</div>
+      </a>
+      <a href="/chat" class="fab-item" style="--i:3;">
+        <span class="fab-label">AI Chat</span>
+        <div class="fab-icon primary">${chatIcon}</div>
+      </a>
+    </div>
+    <button class="fab-btn" id="fabMain" onclick="toggleFab()" aria-label="Quick Actions">
+      <svg id="fabIcon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition:transform .25s ease;">
         <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
       </svg>
     </button>
-    <div class="fab-menu" id="fabMenu" style="display:none;">
-      <a href="/expenses" class="fab-item">
-        <span class="fab-label">Add Expense</span>
-        <div class="fab-btn" style="background:#dc2626;">${expenseIcon}</div>
-      </a>
-      <a href="/income" class="fab-item">
-        <span class="fab-label">Add Income</span>
-        <div class="fab-btn" style="background:#16a34a;">${incomeIcon}</div>
-      </a>
-      <a href="/chat" class="fab-item">
-        <span class="fab-label">AI Chat</span>
-        <div class="fab-btn" style="background:#2563eb;">${chatIcon}</div>
-      </a>
-    </div>
   </div>
 
   <script>
@@ -141,26 +194,67 @@ export function baseLayout({ title, activePage, content, scripts = '', user, fla
     function toggleSidebar() {
       const s = document.getElementById('sidebar');
       const o = document.getElementById('sidebarOverlay');
+      const btn = document.getElementById('hamburgerBtn');
       s.classList.toggle('open');
-      o.classList.toggle('show');
+      o.classList.toggle('active');
+      if (btn) btn.classList.toggle('active');
     }
 
     // FAB toggle
-    let fabOpen = false;
     function toggleFab() {
-      fabOpen = !fabOpen;
-      const menu = document.getElementById('fabMenu');
-      menu.style.display = fabOpen ? 'flex' : 'none';
-      document.getElementById('fabMain').style.transform = fabOpen ? 'rotate(45deg)' : '';
+      const c = document.getElementById('fabContainer');
+      const icon = document.getElementById('fabIcon');
+      c.classList.toggle('active');
+      if (icon) {
+        icon.style.transform = c.classList.contains('active') ? 'rotate(45deg)' : 'rotate(0deg)';
+      }
     }
+    document.addEventListener('click', e => {
+      const c = document.getElementById('fabContainer');
+      if (c && !c.contains(e.target)) {
+        c.classList.remove('active');
+        const icon = document.getElementById('fabIcon');
+        if (icon) icon.style.transform = 'rotate(0deg)';
+      }
+    });
 
-    // Modal helpers
-    function openModal(id) { document.getElementById(id).style.display='flex'; }
-    function closeModal(id) { document.getElementById(id).style.display='none'; }
-    document.addEventListener('keydown', e => { if(e.key==='Escape') document.querySelectorAll('.modal-backdrop').forEach(m=>m.style.display='none'); });
+    // Modal scroll-lock helpers (iOS PWA safe)
+    let _scrollY = 0;
+    function openModal(id) {
+      const modal = document.getElementById(id);
+      if (!modal) return;
+      _scrollY = window.scrollY || window.pageYOffset;
+      document.documentElement.style.setProperty('--scroll-y', '-' + _scrollY + 'px');
+      document.body.classList.add('modal-open');
+      modal.style.display = 'flex';
+      requestAnimationFrame(() => modal.style.opacity = '1');
+    }
+    function closeModal(id) {
+      const modal = document.getElementById(id);
+      if (!modal) return;
+      modal.style.display = 'none';
+      document.body.classList.remove('modal-open');
+      document.documentElement.style.removeProperty('--scroll-y');
+      window.scrollTo(0, _scrollY);
+    }
+    document.addEventListener('click', e => {
+      if (e.target.classList.contains('modal-backdrop')) {
+        closeModal(e.target.id);
+      }
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-backdrop').forEach(m => closeModal(m.id));
+      }
+    });
 
-    // Auto-hide flash messages
-    setTimeout(() => { document.querySelectorAll('.flash').forEach(f=>f.remove()); }, 4000);
+    // Auto-dismiss toasts
+    document.querySelectorAll('.toast').forEach(toast => {
+      setTimeout(() => {
+        toast.style.animation = 'toastSlideOut .35s ease forwards';
+        setTimeout(() => toast.remove(), 400);
+      }, 4000);
+    });
 
     // Service Worker
     if ('serviceWorker' in navigator) {
@@ -173,7 +267,7 @@ export function baseLayout({ title, activePage, content, scripts = '', user, fla
 }
 
 // ── SVG Icons ─────────────────────────────────────────────────────────────────
-const iconProps = `width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"`;
+const iconProps = `width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`;
 export const dashIcon   = `<svg ${iconProps}><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`;
 export const reportIcon = `<svg ${iconProps}><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`;
 export const chatIcon   = `<svg ${iconProps}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
@@ -184,6 +278,7 @@ export const accountIcon= `<svg ${iconProps}><rect x="2" y="5" width="20" height
 export const budgetIcon = `<svg ${iconProps}><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`;
 export const loanIcon   = `<svg ${iconProps}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`;
 export const tgIcon     = `<svg ${iconProps}><path d="M21.198 2.433a2.242 2.242 0 0 0-1.022.215l-8.609 3.33c-2.068.8-4.133 1.598-5.724 2.21a405.15 405.15 0 0 1-2.849 1.09c-.42.147-.99.332-1.473.901-.728.9-.168 1.76.323 2.08.207.137.42.263.656.373a8.54 8.54 0 0 0 1.59.5c.482.117.955.237 1.447.4l.394.14a2.73 2.73 0 0 0 .694.093c.5 0 .981-.145 1.434-.424l.012-.008 4.065-2.826a.5.5 0 0 1 .618.776l-3.374 3.19a1.65 1.65 0 0 0-.494 1.183v.038c0 .18.028.355.082.52l.736 2.252a1.74 1.74 0 0 0 1.657 1.198c.496 0 .966-.2 1.308-.556l1.37-1.432 1.978 1.59c.413.33.907.512 1.414.512a2.21 2.21 0 0 0 2.188-1.902l1.726-9.65a2.242 2.242 0 0 0-2.145-2.63z"/></svg>`;
+export const adminIcon  = `<svg ${iconProps}><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 14.93V17a1 1 0 0 1-2 0v-.07A7 7 0 0 1 5.07 11H5a1 1 0 0 1 0-2h.07A7 7 0 0 1 11 3.07V3a1 1 0 0 1 2 0v.07A7 7 0 0 1 18.93 9H19a1 1 0 0 1 0 2h-.07A7 7 0 0 1 13 16.93z"/></svg>`;
 
 // ── HTML escaping ─────────────────────────────────────────────────────────────
 export function esc(str) {
@@ -192,7 +287,7 @@ export function esc(str) {
 }
 
 export function fmt(num, dec = 2) {
-  return Number(num || 0).toFixed(dec);
+  return Number(num || 0).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 }
 
 export function currentMonth() {

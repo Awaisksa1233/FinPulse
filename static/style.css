@@ -189,7 +189,7 @@ body.modal-open .bottom-nav { display: none !important; }
 /* ============================================================
    LAYOUT
    ============================================================ */
-.app-container { display: flex; min-height: 100vh; }
+.app-container, .app-layout { display: flex; min-height: 100vh; }
 
 /* ============================================================
    SIDEBAR
