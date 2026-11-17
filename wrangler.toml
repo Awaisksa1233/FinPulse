@@ -5,7 +5,7 @@ compatibility_date = "2026-05-23"
 [[d1_databases]]
 binding = "DB"
 database_name = "finpulse"
-database_id = "YOUR_D1_DATABASE_ID"
+database_id = "fae221b2-18f9-4de6-8ab9-07b8dcb58488"
 
 [[kv_namespaces]]
 binding = "SESSIONS"
