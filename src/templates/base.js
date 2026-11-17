@@ -19,7 +19,7 @@ export function baseLayout({ title, activePage, content, scripts = '', user, fla
   ];
 
   const sideNav = navItems.map(n => `
-    <a href="${n.href}" class="nav-item ${activePage === n.page ? 'active' : ''}">
+    <a href="${n.href}" class="nav-link ${activePage === n.page ? 'active' : ''}">
       ${n.icon}
       <span>${n.label}</span>
     </a>
@@ -32,7 +32,7 @@ export function baseLayout({ title, activePage, content, scripts = '', user, fla
     { href: '/accounts', icon: accountIcon, label: 'Accounts', page: 'accounts' },
     { href: '/reports', icon: reportIcon, label: 'Reports', page: 'reports' },
   ].map(n => `
-    <a href="${n.href}" class="bottom-nav-item ${activePage === n.page ? 'active' : ''}">
+    <a href="${n.href}" class="bottom-nav-link ${activePage === n.page ? 'active' : ''}">
       ${n.icon}
       <span>${n.label}</span>
     </a>
@@ -81,22 +81,24 @@ export function baseLayout({ title, activePage, content, scripts = '', user, fla
   <div class="app-layout">
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
-        <div class="sidebar-logo">
+        <div class="sidebar-brand">
           <div style="width:36px;height:36px;background:linear-gradient(135deg,#1d4ed8,#0d9488);border-radius:10px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:16px;flex-shrink:0;">F</div>
-          <span style="font-weight:700;font-size:17px;color:var(--gray-900);">FinPulse</span>
+          <span class="sidebar-title">FinPulse</span>
         </div>
       </div>
       <nav class="sidebar-nav">
         ${sideNav}
       </nav>
-      <div class="sidebar-footer">
-        <div style="padding:12px 16px;border-top:1px solid var(--gray-100);">
-          <div style="font-size:13px;font-weight:600;color:var(--gray-900);margin-bottom:2px;">${esc(user?.full_name || user?.name || user?.email?.split('@')[0] || 'User')}</div>
-          <div style="font-size:11px;color:var(--gray-500);">${esc(user?.email || '')}</div>
+      <div class="sidebar-user">
+        <div class="user-info">
+          <div class="user-avatar">${esc((user?.full_name || user?.name || user?.email || 'U').charAt(0).toUpperCase())}</div>
+          <div class="user-details">
+            <span class="user-name">${esc(user?.full_name || user?.name || user?.email?.split('@')[0] || 'User')}</span>
+            <span class="user-email">${esc(user?.email || '')}</span>
+          </div>
         </div>
-        <a href="/logout" style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:var(--gray-500);font-size:13px;text-decoration:none;border-top:1px solid var(--gray-100);">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          Sign out
+        <a href="/logout" class="btn-logout" title="Sign out">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         </a>
       </div>
     </aside>
