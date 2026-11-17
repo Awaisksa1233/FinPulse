@@ -53,7 +53,7 @@ export function dashboardPage({ user, accounts, income, expenses, totalBalance, 
     <div class="page-banner">
       <div class="page-banner-inner">
         <div>
-          <h1 class="page-title">Good day, ${esc(user.name.split(' ')[0])} 👋</h1>
+          <h1 class="page-title">Good day, ${esc((user?.full_name || user?.name || user?.email || 'User').split(' ')[0])} 👋</h1>
           <p class="page-subtitle">Here's your financial snapshot for today.</p>
         </div>
         <a href="/expenses" class="btn btn-primary btn-sm" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:white;">

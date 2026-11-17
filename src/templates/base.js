@@ -91,7 +91,7 @@ export function baseLayout({ title, activePage, content, scripts = '', user, fla
       </nav>
       <div class="sidebar-footer">
         <div style="padding:12px 16px;border-top:1px solid var(--gray-100);">
-          <div style="font-size:13px;font-weight:600;color:var(--gray-900);margin-bottom:2px;">${esc(user?.name || 'User')}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--gray-900);margin-bottom:2px;">${esc(user?.full_name || user?.name || user?.email?.split('@')[0] || 'User')}</div>
           <div style="font-size:11px;color:var(--gray-500);">${esc(user?.email || '')}</div>
         </div>
         <a href="/logout" style="display:flex;align-items:center;gap:8px;padding:10px 16px;color:var(--gray-500);font-size:13px;text-decoration:none;border-top:1px solid var(--gray-100);">
