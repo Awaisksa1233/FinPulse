@@ -47,11 +47,8 @@ share/python-wheels/
 .installed.cfg
 *.egg
 
-# Database / Secrets / Backups / Artifacts
-instance/
-.env
-.env.*
-*.db
-finpulse.zip
-backup_*/
+# Cloudflare
+.wrangler/
+.mf/
+coverage/
 
