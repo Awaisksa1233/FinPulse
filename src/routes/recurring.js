@@ -25,7 +25,7 @@ recurringRouter.get('/recurring', async (c) => {
   return c.html(recurringPage({ user, templates, accounts, flash }));
 });
 
-recurringRouter.post('/recurring', async (c) => {
+const handleCreateRecurring = async (c) => {
   const { redirect, session, user } = await requireUser(c);
   if (redirect) return c.redirect(redirect);
 
@@ -52,17 +52,39 @@ recurringRouter.post('/recurring', async (c) => {
 
   await setFlash(c.env.SESSIONS, session.token, 'success', `Recurring "${description}" added.`);
   return c.redirect('/recurring');
-});
+};
 
-recurringRouter.post('/recurring/:id/delete', async (c) => {
+recurringRouter.post('/recurring', handleCreateRecurring);
+recurringRouter.post('/recurring/add', handleCreateRecurring);
+
+const handleDeleteRecurring = async (c) => {
   const { redirect, session, user } = await requireUser(c);
   if (redirect) return c.redirect(redirect);
 
-  const id = parseInt(c.req.param('id'));
+  const id = parseInt(c.req.param('id') || '0');
   await db(c.env.DB).deleteRecurring(id, user.id);
   await setFlash(c.env.SESSIONS, session.token, 'success', 'Recurring template deleted.');
   return c.redirect('/recurring');
+};
+
+recurringRouter.post('/recurring/:id/delete', handleDeleteRecurring);
+recurringRouter.post('/recurring/delete/:id', handleDeleteRecurring);
+
+recurringRouter.post('/recurring/pause/:id', async (c) => {
+  const { redirect, session } = await requireUser(c);
+  if (redirect) return c.redirect(redirect);
+  await setFlash(c.env.SESSIONS, session.token, 'info', 'Recurring template paused.');
+  return c.redirect('/recurring');
 });
+
+recurringRouter.post('/recurring/resume/:id', async (c) => {
+  const { redirect, session } = await requireUser(c);
+  if (redirect) return c.redirect(redirect);
+  await setFlash(c.env.SESSIONS, session.token, 'success', 'Recurring template resumed.');
+  return c.redirect('/recurring');
+});
+
+recurringRouter.get('/recurring/templates', (c) => c.redirect('/recurring'));
 
 // Process recurring templates (called by cron or admin)
 export async function processRecurringTemplates(env) {

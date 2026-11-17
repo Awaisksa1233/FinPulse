@@ -6,7 +6,7 @@ import { generateAISummary } from '../services/ai.js';
 
 export const dashboardRouter = new Hono();
 
-dashboardRouter.get('/', async (c) => {
+const handleDashboard = async (c) => {
   const session = await getSession(c);
   if (!session) return c.redirect('/login');
 
@@ -47,7 +47,11 @@ dashboardRouter.get('/', async (c) => {
     budgetAlerts,
     flash,
   }));
-});
+};
+
+dashboardRouter.get('/', handleDashboard);
+dashboardRouter.get('/dashboard', (c) => c.redirect('/'));
+dashboardRouter.get('/home', (c) => c.redirect('/'));
 
 // API: AI summary for dashboard widget
 dashboardRouter.get('/api/summary', async (c) => {

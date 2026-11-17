@@ -30,7 +30,9 @@ budgetsRouter.get('/budgets', async (c) => {
   return c.html(budgetsPage({ user, budgets, spendingMap, flash }));
 });
 
-budgetsRouter.post('/budget', async (c) => {
+budgetsRouter.get('/budget', (c) => c.redirect('/budgets'));
+
+const handleCreateBudget = async (c) => {
   const { redirect, session, user } = await requireUser(c);
   if (redirect) return c.redirect(redirect);
 
@@ -47,20 +49,26 @@ budgetsRouter.post('/budget', async (c) => {
   await db(c.env.DB).createBudget({ user_id: user.id, category, monthly_limit, alert_threshold });
   await setFlash(c.env.SESSIONS, session.token, 'success', `Budget for "${category}" saved.`);
   return c.redirect('/budgets');
-});
+};
 
-budgetsRouter.post('/budget/:id/delete', async (c) => {
+budgetsRouter.post('/budget', handleCreateBudget);
+budgetsRouter.post('/budget/add', handleCreateBudget);
+
+const handleDeleteBudget = async (c) => {
   const { redirect, session, user } = await requireUser(c);
   if (redirect) return c.redirect(redirect);
 
-  const id = parseInt(c.req.param('id'));
+  const id = parseInt(c.req.param('id') || '0');
   await db(c.env.DB).deleteBudget(id, user.id);
   await setFlash(c.env.SESSIONS, session.token, 'success', 'Budget deleted.');
   return c.redirect('/budgets');
-});
+};
+
+budgetsRouter.post('/budget/:id/delete', handleDeleteBudget);
+budgetsRouter.post('/budget/delete/:id', handleDeleteBudget);
 
 // API: AI budget suggestions
-budgetsRouter.get('/api/budget-suggestions', async (c) => {
+const handleBudgetSuggestions = async (c) => {
   const session = await getSession(c);
   if (!session) return c.json({ error: 'Unauthorized' }, 401);
   const user = await db(c.env.DB).getUserById(session.userId);
@@ -76,4 +84,7 @@ budgetsRouter.get('/api/budget-suggestions', async (c) => {
   const { generateBudgetSuggestions } = await import('../services/ai.js');
   const suggestions = await generateBudgetSuggestions(c.env.OPENROUTER_API_KEY || c.env.GROQ_API_KEY, { categorySpend, budgets });
   return c.json({ suggestions });
-});
+};
+
+budgetsRouter.get('/api/budget-suggestions', handleBudgetSuggestions);
+budgetsRouter.get('/api/budgets/suggestions', handleBudgetSuggestions);

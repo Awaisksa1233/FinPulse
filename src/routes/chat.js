@@ -24,13 +24,32 @@ chatRouter.get('/chat', async (c) => {
   return c.html(chatPage({ user, messages, flash }));
 });
 
-chatRouter.post('/chat', async (c) => {
-  const { redirect, session, user } = await requireUser(c);
-  if (redirect) return c.redirect(redirect);
+const handleChat = async (c) => {
+  const contentType = c.req.header('Content-Type') || '';
+  const accept = c.req.header('Accept') || '';
+  const isJson = contentType.includes('application/json') || accept.includes('application/json');
 
-  const form = await c.req.formData();
-  const message = form.get('message')?.toString().trim() || '';
-  if (!message) return c.redirect('/chat');
+  const { redirect, session, user } = await requireUser(c);
+  if (redirect && !isJson) return c.redirect(redirect);
+  if (!user && isJson) return c.json({ error: 'Unauthorized' }, 401);
+
+  let message = '';
+  if (contentType.includes('application/json')) {
+    try {
+      const data = await c.req.json();
+      message = (data.message || data.text || '').toString().trim();
+    } catch(e) {}
+  } else {
+    try {
+      const form = await c.req.formData();
+      message = form.get('message')?.toString().trim() || form.get('text')?.toString().trim() || '';
+    } catch(e) {}
+  }
+
+  if (!message) {
+    if (isJson) return c.json({ response: 'Please enter a message.', message: 'Please enter a message.' });
+    return c.redirect('/chat');
+  }
 
   const d = db(c.env.DB);
 
@@ -75,16 +94,38 @@ chatRouter.post('/chat', async (c) => {
   }
 
   await d.addChatMessage(user.id, 'assistant', reply);
-  return c.redirect('/chat');
-});
 
-chatRouter.post('/chat/clear', async (c) => {
+  if (isJson) {
+    return c.json({ response: reply, message: reply });
+  }
+
+  return c.redirect('/chat');
+};
+
+chatRouter.post('/chat', handleChat);
+chatRouter.post('/api/chat', handleChat);
+chatRouter.post('/api/ai', handleChat);
+
+const handleChatClear = async (c) => {
+  const contentType = c.req.header('Content-Type') || '';
+  const isJson = contentType.includes('application/json');
+
   const { redirect, session, user } = await requireUser(c);
-  if (redirect) return c.redirect(redirect);
+  if (redirect && !isJson) return c.redirect(redirect);
+  if (!user && isJson) return c.json({ error: 'Unauthorized' }, 401);
+
   await db(c.env.DB).clearChatHistory(user.id);
+
+  if (isJson) {
+    return c.json({ success: true, message: 'Chat history cleared.' });
+  }
+
   await setFlash(c.env.SESSIONS, session.token, 'success', 'Chat history cleared.');
   return c.redirect('/chat');
-});
+};
+
+chatRouter.post('/chat/clear', handleChatClear);
+chatRouter.post('/api/chat/clear', handleChatClear);
 
 async function executeAIAction(action, user, d, kv, token) {
   const today = new Date().toISOString().split('T')[0];

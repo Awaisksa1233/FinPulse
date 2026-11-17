@@ -66,13 +66,18 @@ authRouter.post('/register', async (c) => {
   return res;
 });
 
-authRouter.post('/logout', async (c) => {
+const handleLogout = async (c) => {
   const session = await getSession(c);
   if (session) await destroySession(c.env.SESSIONS, session.token);
   const res = c.redirect('/login');
   res.headers.set('Set-Cookie', clearCookieHeader());
   return res;
-});
+};
+
+authRouter.get('/logout', handleLogout);
+authRouter.post('/logout', handleLogout);
+authRouter.get('/signin', (c) => c.redirect('/login'));
+authRouter.get('/signup', (c) => c.redirect('/register'));
 
 // Telegram login via code
 const handleTelegramLogin = async (c) => {

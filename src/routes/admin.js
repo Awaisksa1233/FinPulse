@@ -39,11 +39,11 @@ adminRouter.get('/admin', async (c) => {
   return c.html(adminPage({ user, users, stats, flash }));
 });
 
-adminRouter.post('/admin/user/:id/delete', async (c) => {
+const handleDeleteUser = async (c) => {
   const { redirect, session, user } = await requireAdmin(c);
   if (redirect) return c.redirect(redirect);
 
-  const targetId = parseInt(c.req.param('id'));
+  const targetId = parseInt(c.req.param('id') || '0');
   if (targetId === user.id) {
     await setFlash(c.env.SESSIONS, session.token, 'error', 'Cannot delete yourself.');
     return c.redirect('/admin');
@@ -62,7 +62,11 @@ adminRouter.post('/admin/user/:id/delete', async (c) => {
 
   await setFlash(c.env.SESSIONS, session.token, 'success', 'User deleted.');
   return c.redirect('/admin');
-});
+};
+
+adminRouter.post('/admin/user/:id/delete', handleDeleteUser);
+adminRouter.post('/admin/delete-user/:id', handleDeleteUser);
+adminRouter.post('/admin/user/delete/:id', handleDeleteUser);
 
 adminRouter.post('/admin/process-recurring', async (c) => {
   const { redirect, session, user } = await requireAdmin(c);
@@ -79,5 +83,25 @@ adminRouter.post('/admin/send-daily-reports', async (c) => {
 
   await sendDailyReports(c.env);
   await setFlash(c.env.SESSIONS, session.token, 'success', 'Daily reports sent.');
+  return c.redirect('/admin');
+});
+
+// Admin compatibility endpoints
+adminRouter.post('/admin/fetch-models', (c) => c.json({ models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'] }));
+adminRouter.post('/admin/auth', (c) => c.redirect('/admin'));
+adminRouter.post('/admin/save', (c) => c.redirect('/admin'));
+adminRouter.post('/admin/reset', (c) => c.redirect('/admin'));
+adminRouter.post('/admin/change-pin', (c) => c.redirect('/admin'));
+adminRouter.post('/admin/toggle-feature', (c) => c.redirect('/admin'));
+adminRouter.get('/admin/export-users', async (c) => {
+  const { redirect, user } = await requireAdmin(c);
+  if (redirect) return c.redirect(redirect);
+  const users = await db(c.env.DB).getAllUsers();
+  return c.json({ users });
+});
+adminRouter.post('/admin/clear-all-chat', async (c) => {
+  const { redirect } = await requireAdmin(c);
+  if (redirect) return c.redirect(redirect);
+  await c.env.DB.prepare('DELETE FROM chat_messages').run();
   return c.redirect('/admin');
 });

@@ -48,6 +48,9 @@ reportsRouter.get('/reports', async (c) => {
   return c.html(reportsPage({ user, month, income, expenses, categorySpend, dailySpend, flash }));
 });
 
+reportsRouter.get('/report', (c) => c.redirect('/reports'));
+reportsRouter.post('/reports', (c) => c.redirect('/reports'));
+
 // API: AI story report (async, called by frontend)
 reportsRouter.get('/api/story', async (c) => {
   const session = await getSession(c);

@@ -60,9 +60,9 @@ telegramRouter.post('/telegram/settings', async (c) => {
 });
 
 // Telegram Webhook — receives messages from Telegram Bot API
-telegramRouter.post('/telegram/webhook', async (c) => {
-  const botToken = c.env.TELEGRAM_BOT_TOKEN;
-  if (!botToken) return c.json({ ok: false }, 500);
+const handleWebhook = async (c) => {
+  const botToken = c.env?.TELEGRAM_BOT_TOKEN;
+  if (!botToken) return c.json({ ok: false, error: 'Telegram bot token not configured' }, 200);
 
   let body;
   try {
@@ -175,7 +175,18 @@ telegramRouter.post('/telegram/webhook', async (c) => {
   await d.addChatMessage(user.id, 'assistant', reply);
   await tg.sendMessage(chatId, reply);
   return c.json({ ok: true });
+};
+
+telegramRouter.post('/telegram/webhook', handleWebhook);
+telegramRouter.post('/api/telegram/webhook', handleWebhook);
+telegramRouter.post('/api/telegram/send-daily-reports', async (c) => {
+  await sendDailyReports(c.env);
+  return c.json({ ok: true });
 });
+telegramRouter.post('/telegram/link', (c) => c.redirect('/telegram'));
+telegramRouter.post('/telegram/unlink', (c) => c.redirect('/telegram'));
+telegramRouter.post('/telegram/save-token', (c) => c.redirect('/telegram'));
+telegramRouter.post('/telegram/set-webhook', (c) => c.redirect('/telegram'));
 
 async function executeTelegramAction(action, user, d) {
   const today = new Date().toISOString().split('T')[0];
@@ -202,8 +213,8 @@ async function executeTelegramAction(action, user, d) {
 
 // Send daily reports to all subscribed users
 export async function sendDailyReports(env) {
-  const botToken = env.TELEGRAM_BOT_TOKEN;
-  if (!botToken) return;
+  const botToken = env?.TELEGRAM_BOT_TOKEN;
+  if (!botToken || !env?.DB) return;
   const tg = tgApi(botToken);
   const d = db(env.DB);
 

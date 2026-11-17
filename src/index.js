@@ -12,6 +12,9 @@ import { telegramRouter } from './routes/telegram.js';
 import { adminRouter } from './routes/admin.js';
 import { processRecurringTemplates } from './routes/recurring.js';
 import { sendDailyReports } from './routes/telegram.js';
+import { shortcutPage } from './templates/shortcut.js';
+import { getSession } from './auth.js';
+import { db } from './db.js';
 
 import { getAssetFromKV } from '@cloudflare/kv-asset-handler';
 import manifestJSON from '__STATIC_CONTENT_MANIFEST';
@@ -56,6 +59,21 @@ app.route('/', chatRouter);
 app.route('/', reportsRouter);
 app.route('/', telegramRouter);
 app.route('/', adminRouter);
+
+// ── Root static shortcuts ──────────────────────────────────────────
+app.get('/manifest.json', (c) => c.redirect('/static/manifest.json'));
+app.get('/sw.js', (c) => c.redirect('/static/sw.js'));
+app.get('/favicon.ico', (c) => c.redirect('/static/icons/icon-192.png'));
+
+// ── Shortcut guide ──────────────────────────────────────────────────
+app.get('/shortcut', async (c) => {
+  const session = await getSession(c);
+  if (!session) return c.redirect('/login');
+  const user = await db(c.env.DB).getUserById(session.userId);
+  if (!user) return c.redirect('/login');
+  const url = new URL(c.req.url);
+  return c.html(shortcutPage({ user, serverUrl: url.origin, flash: [] }));
+});
 
 // ── 404 handler ─────────────────────────────────────────────────────
 app.notFound((c) => {

@@ -23,7 +23,19 @@ accountsRouter.get('/accounts', async (c) => {
   return c.html(accountsPage({ user, accounts, flash }));
 });
 
-accountsRouter.post('/account', async (c) => {
+accountsRouter.get('/account', (c) => c.redirect('/accounts'));
+
+// API endpoint for accounts
+accountsRouter.get('/api/accounts', async (c) => {
+  const session = await getSession(c);
+  if (!session) return c.json({ error: 'Unauthorized' }, 401);
+  const user = await db(c.env.DB).getUserById(session.userId);
+  if (!user) return c.json({ error: 'User not found' }, 404);
+  const accounts = await db(c.env.DB).getAccounts(user.id);
+  return c.json({ success: true, accounts });
+});
+
+const handleCreateAccount = async (c) => {
   const { redirect, session, user } = await requireUser(c);
   if (redirect) return c.redirect(redirect);
 
@@ -41,14 +53,18 @@ accountsRouter.post('/account', async (c) => {
   await db(c.env.DB).createAccount({ user_id: user.id, name, type, balance, color });
   await setFlash(c.env.SESSIONS, session.token, 'success', `Account "${name}" created.`);
   return c.redirect('/accounts');
-});
+};
 
-accountsRouter.post('/account/:id/edit', async (c) => {
+accountsRouter.post('/account', handleCreateAccount);
+accountsRouter.post('/account/add', handleCreateAccount);
+accountsRouter.post('/accounts/add', handleCreateAccount);
+
+const handleEditAccount = async (c) => {
   const { redirect, session, user } = await requireUser(c);
   if (redirect) return c.redirect(redirect);
 
-  const id = parseInt(c.req.param('id'));
   const form = await c.req.formData();
+  const id = parseInt(c.req.param('id') || form.get('id')?.toString() || '0');
   const name = form.get('name')?.toString().trim() || '';
   const color = form.get('color')?.toString() || '#6366f1';
 
@@ -62,13 +78,16 @@ accountsRouter.post('/account/:id/edit', async (c) => {
   await db(c.env.DB).updateAccount(id, { name, color });
   await setFlash(c.env.SESSIONS, session.token, 'success', 'Account updated.');
   return c.redirect('/accounts');
-});
+};
 
-accountsRouter.post('/account/:id/delete', async (c) => {
+accountsRouter.post('/account/:id/edit', handleEditAccount);
+accountsRouter.post('/account/edit', handleEditAccount);
+
+const handleDeleteAccount = async (c) => {
   const { redirect, session, user } = await requireUser(c);
   if (redirect) return c.redirect(redirect);
 
-  const id = parseInt(c.req.param('id'));
+  const id = parseInt(c.req.param('id') || '0');
   const accounts = await db(c.env.DB).getAccounts(user.id);
   if (!accounts.find(a => a.id === id)) {
     await setFlash(c.env.SESSIONS, session.token, 'error', 'Account not found.');
@@ -78,7 +97,10 @@ accountsRouter.post('/account/:id/delete', async (c) => {
   await db(c.env.DB).deleteAccount(id, user.id);
   await setFlash(c.env.SESSIONS, session.token, 'success', 'Account deleted.');
   return c.redirect('/accounts');
-});
+};
+
+accountsRouter.post('/account/:id/delete', handleDeleteAccount);
+accountsRouter.post('/account/delete/:id', handleDeleteAccount);
 
 // Quick Transfer between accounts
 accountsRouter.post('/transfer', async (c) => {
@@ -86,8 +108,8 @@ accountsRouter.post('/transfer', async (c) => {
   if (redirect) return c.redirect(redirect);
 
   const form = await c.req.formData();
-  const from_id = parseInt(form.get('from_account_id')?.toString() || '0');
-  const to_id = parseInt(form.get('to_account_id')?.toString() || '0');
+  const from_id = parseInt(form.get('from_account_id')?.toString() || form.get('from_id')?.toString() || '0');
+  const to_id = parseInt(form.get('to_account_id')?.toString() || form.get('to_id')?.toString() || '0');
   const amount = parseFloat(form.get('amount')?.toString() || '0');
   const description = form.get('description')?.toString().trim() || 'Transfer';
 
