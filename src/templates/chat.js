@@ -6,7 +6,7 @@ function formatMessage(text) {
   // Bold **text**
   formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
   // Inline code `code`
-  formatted = formatted.replace(/`([^`]+)`/g, '<code style="background:rgba(0,0,0,.06);padding:2px 6px;border-radius:4px;font-size:12.5px;">$1</code>');
+  formatted = formatted.replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,.08);color:#38bdf8;padding:2px 6px;border-radius:4px;font-size:12.5px;">$1</code>');
   // Line breaks
   formatted = formatted.replace(/\n/g, '<br>');
   return formatted;
@@ -29,7 +29,7 @@ export function chatPage({ user, messages = [], flash = [] }) {
       ${!isUser ? `
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
         <div style="width:20px;height:20px;border-radius:6px;background:linear-gradient(135deg,#2563eb,#0d9488);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:11px;">F</div>
-        <span style="font-size:12px;font-weight:700;color:var(--text-muted);">FinPulse AI</span>
+        <span style="font-size:12px;font-weight:700;color:#94a3b8;">FinPulse AI</span>
       </div>` : ''}
       <div class="chat-text">${formatMessage(m.content)}</div>
     </div>`;

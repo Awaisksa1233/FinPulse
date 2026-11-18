@@ -131,7 +131,7 @@ export function dashboardPage({
       <div class="rounded-3xl p-5 bg-gradient-to-br from-slate-900 via-slate-900/95 to-blue-950/40 border border-slate-800/80 shadow-lg relative overflow-hidden">
         <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-blue-600/10 rounded-full blur-2xl pointer-events-none"></div>
         <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
-          <span class="uppercase tracking-wider font-semibold text-[10px]">Net Liquid Worth</span>
+          <span class="uppercase tracking-wider font-semibold text-[10px]">Total Net Worth</span>
           <span class="text-emerald-400 font-medium flex items-center gap-1 text-[11px] bg-emerald-950/60 border border-emerald-800/40 px-2 py-0.5 rounded-full">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 15l-6-6-6 6"/></svg>
             ${accLen} active accounts
@@ -144,7 +144,7 @@ export function dashboardPage({
           </span>
         </div>
 
-        <div class="grid grid-cols-2 gap-2 pt-3 border-t border-slate-800/60 text-xs">
+        <div class="hero-stats-grid grid grid-cols-2 gap-2 pt-3 border-t border-slate-800/60 text-xs">
           <div class="flex items-center gap-2">
             <div class="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
@@ -168,28 +168,28 @@ export function dashboardPage({
 
       <!-- Quick Action Shortcut Pills (Thumb zone) -->
       <div class="thumb-actions-grid grid grid-cols-4 gap-2">
-        <button onclick="openQuickAddSheet('expense')" class="flex flex-col items-center gap-1.5 p-2.5 rounded-2xl bg-slate-900 border border-slate-800/80 hover:border-slate-700 active:scale-95 transition-all">
+        <button onclick="openQuickAddSheet('expense')" class="thumb-action-card flex flex-col items-center gap-1.5 p-2.5 rounded-2xl bg-slate-900 border border-slate-800/80 hover:border-slate-700 active:scale-95 transition-all">
           <div class="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center shadow-inner">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
           </div>
           <span class="text-[11px] font-medium text-slate-300">Expense</span>
         </button>
 
-        <button onclick="openQuickAddSheet('income')" class="flex flex-col items-center gap-1.5 p-2.5 rounded-2xl bg-slate-900 border border-slate-800/80 hover:border-slate-700 active:scale-95 transition-all">
+        <button onclick="openQuickAddSheet('income')" class="thumb-action-card flex flex-col items-center gap-1.5 p-2.5 rounded-2xl bg-slate-900 border border-slate-800/80 hover:border-slate-700 active:scale-95 transition-all">
           <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shadow-inner">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 4v16m-8-8h16"/></svg>
           </div>
           <span class="text-[11px] font-medium text-slate-300">Income</span>
         </button>
 
-        <a href="/chat" class="flex flex-col items-center gap-1.5 p-2.5 rounded-2xl bg-slate-900 border border-slate-800/80 hover:border-slate-700 active:scale-95 transition-all">
+        <a href="/chat" class="thumb-action-card flex flex-col items-center gap-1.5 p-2.5 rounded-2xl bg-slate-900 border border-slate-800/80 hover:border-slate-700 active:scale-95 transition-all">
           <div class="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center shadow-inner">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-5l-5 5v-5z"/></svg>
           </div>
           <span class="text-[11px] font-medium text-slate-300">AI Advisor</span>
         </a>
 
-        <a href="/budgets" class="flex flex-col items-center gap-1.5 p-2.5 rounded-2xl bg-slate-900 border border-slate-800/80 hover:border-slate-700 active:scale-95 transition-all">
+        <a href="/budgets" class="thumb-action-card flex flex-col items-center gap-1.5 p-2.5 rounded-2xl bg-slate-900 border border-slate-800/80 hover:border-slate-700 active:scale-95 transition-all">
           <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center shadow-inner">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
           </div>

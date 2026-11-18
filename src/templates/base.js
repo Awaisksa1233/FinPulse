@@ -251,18 +251,18 @@ export function baseLayout({ title, activePage, content, scripts = '', user, fla
 
     <!-- Tactile Numpad Grid -->
     <div class="qa-numpad grid grid-cols-3 gap-2 pt-1 font-mono text-base font-semibold">
-      <button type="button" onclick="qaNum('1')" class="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">1</button>
-      <button type="button" onclick="qaNum('2')" class="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">2</button>
-      <button type="button" onclick="qaNum('3')" class="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">3</button>
-      <button type="button" onclick="qaNum('4')" class="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">4</button>
-      <button type="button" onclick="qaNum('5')" class="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">5</button>
-      <button type="button" onclick="qaNum('6')" class="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">6</button>
-      <button type="button" onclick="qaNum('7')" class="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">7</button>
-      <button type="button" onclick="qaNum('8')" class="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">8</button>
-      <button type="button" onclick="qaNum('9')" class="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">9</button>
-      <button type="button" onclick="qaNum('.')" class="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">.</button>
-      <button type="button" onclick="qaNum('0')" class="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">0</button>
-      <button type="button" onclick="qaDel()" class="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-slate-300 transition-all flex items-center justify-center" aria-label="Backspace">⌫</button>
+      <button type="button" onclick="qaNum('1')" class="qa-key py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">1</button>
+      <button type="button" onclick="qaNum('2')" class="qa-key py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">2</button>
+      <button type="button" onclick="qaNum('3')" class="qa-key py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">3</button>
+      <button type="button" onclick="qaNum('4')" class="qa-key py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">4</button>
+      <button type="button" onclick="qaNum('5')" class="qa-key py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">5</button>
+      <button type="button" onclick="qaNum('6')" class="qa-key py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">6</button>
+      <button type="button" onclick="qaNum('7')" class="qa-key py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">7</button>
+      <button type="button" onclick="qaNum('8')" class="qa-key py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">8</button>
+      <button type="button" onclick="qaNum('9')" class="qa-key py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">9</button>
+      <button type="button" onclick="qaNum('.')" class="qa-key py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">.</button>
+      <button type="button" onclick="qaNum('0')" class="qa-key py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">0</button>
+      <button type="button" onclick="qaDel()" class="qa-key py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-slate-300 transition-all flex items-center justify-center" aria-label="Backspace">⌫</button>
     </div>
 
     <button type="button" id="qaSubmitBtn" onclick="qaCommit()" class="w-full mt-3 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs tracking-wide shadow-lg active:scale-[0.98] transition-all">
