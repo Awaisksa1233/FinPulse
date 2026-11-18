@@ -2,49 +2,69 @@ import { esc } from './base.js';
 
 export function authPage({ mode = 'login', flash = [] }) {
   const isLogin = mode === 'login';
-  const flashHtml = flash.map(f => `<div class="flash ${f.category || f.type || 'error'}" style="margin-bottom:16px;padding:10px 14px;border-radius:8px;background:${f.category === 'success' || f.type === 'success' ? '#16a34a' : '#dc2626'};color:white;font-size:13.5px;font-weight:500;">${esc(f.message)}</div>`).join('');
+  const flashHtml = flash.map(f => `<div class="flash ${f.category || f.type || 'error'}" style="margin-bottom:16px;padding:10px 14px;border-radius:12px;background:${f.category === 'success' || f.type === 'success' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'};border:1px solid ${f.category === 'success' || f.type === 'success' ? 'rgba(16,185,129,0.4)' : 'rgba(239,68,68,0.4)'};color:${f.category === 'success' || f.type === 'success' ? '#34d399' : '#f87171'};font-size:13px;font-weight:600;">${esc(f.message)}</div>`).join('');
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>${isLogin ? 'Login' : 'Register'} - FinPulse</title>
-  <link rel="stylesheet" href="/static/style.css">
   <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#090d16">
   <style>
-    body { display:flex; justify-content:center; align-items:center; min-height:100vh; background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#1e3a8a 100%); padding:16px; margin:0; font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif; }
-    .auth-container { background:white; padding:36px 32px; border-radius:18px; box-shadow:0 24px 64px rgba(0,0,0,.35); width:100%; max-width:400px; box-sizing:border-box; }
-    .auth-logo { width:52px; height:52px; background:linear-gradient(135deg,#1d4ed8,#0d9488); border-radius:14px; display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:24px; margin:0 auto 18px; box-shadow:0 8px 20px rgba(29,78,216,.3); }
-    .auth-title { text-align:center; font-size:24px; font-weight:700; color:#0f172a; margin:0 0 6px; }
-    .auth-subtitle { text-align:center; color:#64748b; font-size:14px; margin:0 0 20px; }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      display: flex; justify-content: center; align-items: center; min-height: 100vh;
+      background: #090d16; color: #f8fafc; padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .auth-container {
+      background: #111827; border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 36px 28px; border-radius: 28px; box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+      width: 100%; max-width: 400px;
+    }
+    .auth-logo {
+      width: 54px; height: 54px; background: linear-gradient(135deg, #1d4ed8, #0d9488);
+      border-radius: 16px; display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 800; font-size: 24px; margin: 0 auto 16px;
+      box-shadow: 0 8px 24px rgba(37, 99, 235, 0.4);
+    }
+    .auth-title { text-align: center; font-size: 22px; font-weight: 800; color: #f8fafc; margin-bottom: 6px; letter-spacing: -0.3px; }
+    .auth-subtitle { text-align: center; color: #94a3b8; font-size: 13px; margin-bottom: 22px; }
     
-    .auth-tabs { display:flex; background:#f1f5f9; border-radius:12px; padding:4px; margin-bottom:20px; gap:4px; }
-    .auth-tab { flex:1; padding:8px 12px; text-align:center; font-size:13px; font-weight:600; border-radius:8px; border:none; background:transparent; color:#64748b; cursor:pointer; transition:all .15s; }
-    .auth-tab.active { background:white; color:#0f172a; box-shadow:0 2px 6px rgba(0,0,0,.08); }
+    .auth-tabs { display: flex; background: #0b0f19; border-radius: 14px; padding: 4px; margin-bottom: 20px; gap: 4px; border: 1px solid rgba(255,255,255,0.06); }
+    .auth-tab { flex: 1; padding: 9px 12px; text-align: center; font-size: 12px; font-weight: 600; border-radius: 10px; border: none; background: transparent; color: #94a3b8; cursor: pointer; transition: all .15s; }
+    .auth-tab.active { background: #1e293b; color: #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
     
-    .tab-content { display:none; }
-    .tab-content.active { display:block; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
     
-    .telegram-box { background:linear-gradient(135deg,#0088cc10,#0088cc05); border:1.5px solid #0088cc30; border-radius:14px; padding:20px; margin-bottom:16px; text-align:center; }
-    .telegram-icon { width:44px; height:44px; background:#0088cc; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 10px; }
-    .telegram-title { font-weight:600; color:#0088cc; font-size:15px; margin-bottom:4px; }
-    .telegram-desc { font-size:12.5px; color:#64748b; margin:0 0 16px; }
+    .telegram-box { background: rgba(0, 136, 204, 0.08); border: 1px solid rgba(0, 136, 204, 0.25); border-radius: 16px; padding: 20px; margin-bottom: 16px; text-align: center; }
+    .telegram-icon { width: 44px; height: 44px; background: #0088cc; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; box-shadow: 0 4px 12px rgba(0,136,204,0.3); }
+    .telegram-title { font-weight: 700; color: #38bdf8; font-size: 14px; margin-bottom: 4px; }
+    .telegram-desc { font-size: 12px; color: #94a3b8; margin-bottom: 16px; line-height: 1.4; }
     
-    .form-group { margin-bottom:16px; text-align:left; }
-    .form-label { display:block; font-size:13px; font-weight:600; color:#334155; margin-bottom:6px; }
-    .form-control { width:100%; padding:11px 14px; border:1px solid #cbd5e1; border-radius:10px; font-size:14px; box-sizing:border-box; outline:none; transition:border-color .15s; }
-    .form-control:focus { border-color:#2563eb; ring:2px rgba(37,99,235,.2); }
+    .form-group { margin-bottom: 16px; text-align: left; }
+    .form-label { display: block; font-size: 12px; font-weight: 600; color: #cbd5e1; margin-bottom: 6px; }
+    .form-control {
+      width: 100%; padding: 12px 14px; background: #0b0f19; border: 1px solid #1e293b;
+      border-radius: 14px; font-size: 13.5px; color: #f8fafc; outline: none; transition: border-color .15s;
+    }
+    .form-control:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
     
-    .btn { display:inline-flex; align-items:center; justify-content:center; width:100%; padding:12px 16px; border-radius:10px; font-size:14px; font-weight:600; border:none; cursor:pointer; transition:background .15s; }
-    .btn-primary { background:#2563eb; color:white; }
-    .btn-primary:hover { background:#1d4ed8; }
-    .btn-telegram { background:#0088cc; color:white; }
-    .btn-telegram:hover { background:#0077b3; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; width: 100%;
+      padding: 13px 16px; border-radius: 14px; font-size: 13.5px; font-weight: 700;
+      border: none; cursor: pointer; transition: transform .12s, box-shadow .15s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: linear-gradient(135deg, #2563eb, #0d9488); color: white; box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35); }
+    .btn-telegram { background: #0088cc; color: white; box-shadow: 0 4px 16px rgba(0, 136, 204, 0.35); }
     
-    .auth-toggle { text-align:center; margin-top:20px; font-size:13.5px; color:#64748b; }
-    .auth-toggle a { color:#2563eb; font-weight:600; text-decoration:none; }
-    .auth-toggle a:hover { text-decoration:underline; }
+    .auth-toggle { text-align: center; margin-top: 20px; font-size: 12.5px; color: #94a3b8; }
+    .auth-toggle a { color: #60a5fa; font-weight: 600; text-decoration: none; }
+    .auth-toggle a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -73,7 +93,7 @@ export function authPage({ mode = 'login', flash = [] }) {
         </div>
         <div class="form-group" style="display:flex;align-items:center;gap:8px;margin-bottom:18px;">
           <input type="checkbox" name="remember" id="remember" checked style="accent-color:#2563eb;width:16px;height:16px;cursor:pointer;">
-          <label for="remember" style="font-size:13px;color:#475569;cursor:pointer;user-select:none;">Remember me for 30 days</label>
+          <label for="remember" style="font-size:12px;color:#94a3b8;cursor:pointer;user-select:none;">Remember me for 30 days</label>
         </div>
         <button type="submit" class="btn btn-primary">Sign In</button>
       </form>
