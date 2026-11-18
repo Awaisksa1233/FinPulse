@@ -102,16 +102,17 @@ export function baseLayout({ title = 'FinPulse', activePage = 'dashboard', conte
     <!-- Bottom Sheet: Quick Add Numpad -->
     <div id="qaBackdrop" onclick="closeQuickAddSheet()" class="absolute inset-0 bg-black/60 backdrop-blur-sm z-40 opacity-0 pointer-events-none transition-opacity duration-300"></div>
 
-    <div id="quickAddSheet" class="absolute bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-700/80 rounded-t-[32px] p-4 z-50 transform translate-y-full sheet-transition shadow-2xl flex flex-col">
+    <div id="quickAddSheet" class="absolute bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-700/80 rounded-t-[32px] p-4 z-50 transform translate-y-full pointer-events-none sheet-transition shadow-2xl flex flex-col">
       <div class="w-10 h-1 bg-slate-700 rounded-full mx-auto mb-3"></div>
 
       <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
         <div class="flex items-center gap-2">
-          <button id="qaTypeExpense" onclick="setQaType('expense')" class="px-3 py-1 rounded-full text-xs font-bold bg-rose-500 text-white">Expense</button>
-          <button id="qaTypeIncome" onclick="setQaType('income')" class="px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-400">Income</button>
+          <button id="qaTypeExpense" onclick="setQaType('expense')" class="px-3 py-1 rounded-full text-xs font-bold bg-rose-500 text-white cursor-pointer">Expense</button>
+          <button id="qaTypeIncome" onclick="setQaType('income')" class="px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-400 cursor-pointer">Income</button>
         </div>
-        <button onclick="closeQuickAddSheet()" class="w-7 h-7 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center hover:text-white">✕</button>
+        <button onclick="closeQuickAddSheet()" class="w-7 h-7 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center hover:text-white cursor-pointer">✕</button>
       </div>
+
 
       <form id="qaForm" method="POST" action="/transaction" onsubmit="return handleQaSubmit(event)">
         <input type="hidden" name="type" id="qaInputType" value="expense">
@@ -179,7 +180,7 @@ export function baseLayout({ title = 'FinPulse', activePage = 'dashboard', conte
       const s = document.getElementById('quickAddSheet');
       b.classList.remove('pointer-events-none', 'opacity-0');
       b.classList.add('opacity-100');
-      s.classList.remove('translate-y-full');
+      s.classList.remove('translate-y-full', 'pointer-events-none');
     }
 
     function closeQuickAddSheet() {
@@ -187,8 +188,9 @@ export function baseLayout({ title = 'FinPulse', activePage = 'dashboard', conte
       const s = document.getElementById('quickAddSheet');
       b.classList.add('pointer-events-none', 'opacity-0');
       b.classList.remove('opacity-100');
-      s.classList.add('translate-y-full');
+      s.classList.add('translate-y-full', 'pointer-events-none');
     }
+
 
     const qaExpenseCats = [
       { name: 'Food & Dining', emoji: '🍔' },
