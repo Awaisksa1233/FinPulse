@@ -1,15 +1,17 @@
-// Base HTML layout — matches FinPulse design tokens and native Cloudflare Workers shell
+// Base HTML layout — Modern Mobile-First Fintech Design System
 
 export function baseLayout({ title, activePage, content, scripts = '', user, flash = [] }) {
   const flashHtml = flash.length ? `
-    <div class="toast-container" id="toastContainer">
+    <div class="fixed top-3 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4 space-y-2 pointer-events-none" id="toastContainer">
       ${flash.map(f => {
         const isErr = f.category === 'error' || f.type === 'error';
         return `
-        <div class="toast ${isErr ? 'error' : 'success'}">
-          <div class="toast-icon">${isErr ? '✕' : '✓'}</div>
-          <span class="toast-message">${esc(f.message)}</span>
-          <button class="toast-close" onclick="this.closest('.toast').remove()" aria-label="Close">×</button>
+        <div class="toast pointer-events-auto flex items-center justify-between p-3 rounded-2xl text-xs font-semibold shadow-lg backdrop-blur-md ${isErr ? 'bg-rose-950/90 text-rose-200 border border-rose-800/60' : 'bg-emerald-950/90 text-emerald-200 border border-emerald-800/60'} animate-bounce">
+          <div class="flex items-center gap-2">
+            <span>${isErr ? '✕' : '✓'}</span>
+            <span>${esc(f.message)}</span>
+          </div>
+          <button class="toast-close opacity-60 hover:opacity-100" onclick="this.closest('.toast').remove()" aria-label="Close">×</button>
         </div>`;
       }).join('')}
     </div>` : '';
@@ -64,38 +66,17 @@ export function baseLayout({ title, activePage, content, scripts = '', user, fla
   }
 
   const sideNav = navSections.map(sec => `
-    <span class="nav-section-label">${sec.label}</span>
+    <span class="text-[10px] uppercase font-bold tracking-wider text-slate-500 px-3 pt-3 pb-1 block">${sec.label}</span>
     ${sec.items.map(n => `
-      <a href="${n.href}" class="nav-link ${activePage === n.page ? 'active' : ''}">
+      <a href="${n.href}" class="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold ${activePage === n.page ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'} transition-all">
         ${n.icon}
         <span>${n.label}</span>
       </a>
     `).join('')}
   `).join('');
 
-  const bottomNavHtml = `
-    <a href="/" class="bottom-nav-link ${activePage === 'dashboard' ? 'active' : ''}">
-      ${dashIcon}
-      <span>Home</span>
-    </a>
-    <a href="/expenses" class="bottom-nav-link ${activePage === 'expenses' || activePage === 'income' ? 'active' : ''}">
-      ${expenseIcon}
-      <span>Activity</span>
-    </a>
-    <div class="bottom-nav-center-wrap">
-      <button class="bottom-nav-center-btn" onclick="openQuickAddSheet('expense')" aria-label="Quick Add Transaction">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </button>
-    </div>
-    <a href="/chat" class="bottom-nav-link ${activePage === 'chat' ? 'active' : ''}">
-      ${chatIcon}
-      <span>AI Advisor</span>
-    </a>
-    <a href="/budgets" class="bottom-nav-link ${activePage === 'budgets' ? 'active' : ''}">
-      ${budgetIcon}
-      <span>Budgets</span>
-    </a>
-  `;
+  const userInitial = esc((user?.full_name || user?.name || user?.email || 'U').charAt(0).toUpperCase());
+  const userName = esc(user?.full_name || user?.name || user?.email?.split('@')[0] || 'User');
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -104,192 +85,207 @@ export function baseLayout({ title, activePage, content, scripts = '', user, fla
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>${esc(title)} - FinPulse</title>
   <meta name="description" content="FinPulse - Intelligent Personal Finance Dashboard">
+  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="/static/style.css">
   <link rel="manifest" href="/static/manifest.json">
-  <meta name="theme-color" content="#1d4ed8">
+  <meta name="theme-color" content="#090d16">
   <link rel="apple-touch-icon" href="/static/icons/icon-180.png">
-  <link rel="apple-touch-icon" sizes="152x152" href="/static/icons/icon-152.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/icon-180.png">
-  <link rel="apple-touch-icon" sizes="192x192" href="/static/icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #090d16;
+      --surface: #121826;
+      --surface-elevated: #1a2236;
+      --border: rgba(255, 255, 255, 0.08);
+      --primary: #3b82f6;
+    }
+    body {
+      background-color: #090d16 !important;
+      color: #f8fafc !important;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .sheet-transition { transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease; }
+    .fab-glow { box-shadow: 0 8px 24px -2px rgba(59, 130, 246, 0.5), 0 0 12px 2px rgba(13, 148, 136, 0.3); }
+    body.privacy-masked .privacy-val { filter: blur(8px); user-select: none; pointer-events: none; transition: filter 0.2s ease; }
+    .sidebar-overlay.active { opacity: 1; pointer-events: auto; }
+    .sidebar.open { transform: translateX(0); }
+  </style>
 </head>
-<body>
-  <!-- PWA Loading Screen -->
-  <div id="pwaLoader" class="pwa-loading-screen">
-    <div class="pwa-loading-content">
-      <div style="width:64px;height:64px;background:linear-gradient(135deg,#1d4ed8,#0d9488);border-radius:18px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;box-shadow:0 8px 32px rgba(37,99,235,.5);color:white;font-weight:800;font-size:28px;">F</div>
-      <div class="pwa-loading-spinner"></div>
-    </div>
-  </div>
+<body class="bg-[#090d16] text-slate-100 min-h-screen antialiased select-none">
 
   ${flashHtml}
 
-  <!-- Mobile Header -->
-  <header class="mobile-header">
-    <div class="mobile-logo">
-      <div style="width:30px;height:30px;background:linear-gradient(135deg,#1d4ed8,#0d9488);border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:15px;flex-shrink:0;box-shadow:0 2px 8px rgba(37,99,235,.4);">F</div>
-      <span class="mobile-logo-text">FinPulse</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:6px;">
-      <button class="mobile-header-btn" onclick="togglePrivacy()" title="Toggle Privacy Mode" aria-label="Toggle Privacy">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-      </button>
-      <a href="/chat" class="mobile-header-btn" title="AI Assistant">
-        ${chatIcon}
-      </a>
-      <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Toggle navigation">
-        <div class="hamburger-icon">
-          <span></span><span></span><span></span>
-        </div>
-      </button>
-    </div>
-  </header>
+  <!-- App Viewport Container (Centered mobile chassis max-w-[430px]) -->
+  <div class="w-full max-w-[430px] mx-auto min-h-screen flex flex-col relative px-3 pt-2 pb-24">
 
-  <!-- Sidebar Overlay -->
-  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
-
-  <div class="app-container">
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-header">
-        <div class="sidebar-brand">
-          <div style="width:36px;height:36px;background:linear-gradient(135deg,#1d4ed8,#0d9488);border-radius:10px;display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:17px;flex-shrink:0;box-shadow:0 4px 12px rgba(37,99,235,.5);">F</div>
-          <span class="sidebar-title">FinPulse</span>
-        </div>
-      </div>
-      <nav class="sidebar-nav">
-        ${sideNav}
-      </nav>
-      <div class="sidebar-user">
-        <div class="user-info">
-          <div class="user-avatar">${esc((user?.full_name || user?.name || user?.email || 'U').charAt(0).toUpperCase())}</div>
-          <div class="user-details">
-            <span class="user-name">${esc(user?.full_name || user?.name || user?.email?.split('@')[0] || 'User')}</span>
-            <span class="user-email">${esc(user?.email || '')}</span>
+    <!-- Mobile Header -->
+    <header class="mobile-header flex items-center justify-between py-2 border-b border-slate-800/80 mb-3">
+      <div class="flex items-center gap-2.5">
+        <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-teal-400 p-[2px] shadow-sm flex-shrink-0">
+          <div class="w-full h-full rounded-full bg-slate-900 flex items-center justify-center font-bold text-sm text-blue-400">
+            ${userInitial}
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <a href="/settings" class="btn-logout" title="Settings" style="color:var(--sidebar-text);">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          </a>
-          <a href="/logout" class="btn-logout" title="Sign out">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          </a>
+        <div>
+          <p class="text-[10px] text-slate-400 leading-none">Welcome back,</p>
+          <h2 class="text-sm font-bold text-slate-100 leading-tight">${userName}</h2>
         </div>
       </div>
-    </aside>
+      <div class="flex items-center gap-1.5">
+        <button onclick="togglePrivacy()" title="Toggle Privacy" class="mobile-header-btn p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 active:scale-95 transition-all">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+        <a href="/chat" class="mobile-header-btn p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 active:scale-95 transition-all" title="AI Advisor">
+          ${chatIcon}
+        </a>
+        <button id="hamburgerBtn" onclick="toggleSidebar()" class="mobile-header-btn hamburger-btn p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 active:scale-95 transition-all" aria-label="Toggle navigation">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+      </div>
+    </header>
 
-    <main class="main-content">
+    <!-- Main Content Area -->
+    <main class="flex-1 w-full">
       ${content}
     </main>
+
   </div>
 
-  <!-- Bottom Nav (mobile) -->
-  <nav class="bottom-nav">
-    <div class="bottom-nav-items">
-      ${bottomNavHtml}
+  <!-- Slide-out Sidebar Drawer -->
+  <div class="sidebar-overlay fixed inset-0 bg-black/60 backdrop-blur-sm z-50 opacity-0 pointer-events-none transition-opacity duration-300" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+  <aside class="sidebar fixed top-0 left-0 bottom-0 w-72 bg-slate-950 border-r border-slate-800/80 z-50 p-4 transform -translate-x-full transition-transform duration-300 flex flex-col justify-between shadow-2xl" id="sidebar">
+    <div>
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-teal-400 flex items-center justify-center font-bold text-white text-sm shadow">F</div>
+          <span class="font-bold text-base text-white tracking-tight">FinPulse</span>
+        </div>
+        <button onclick="toggleSidebar()" class="text-slate-400 hover:text-white p-1 text-sm">✕</button>
+      </div>
+      <nav class="space-y-1">
+        ${sideNav}
+      </nav>
     </div>
+    <div class="pt-3 border-t border-slate-800 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center font-bold text-xs">${userInitial}</div>
+        <div class="text-[11px] leading-tight">
+          <p class="font-semibold text-slate-200">${userName}</p>
+          <p class="text-slate-500 truncate max-w-[120px]">${esc(user?.email || '')}</p>
+        </div>
+      </div>
+      <a href="/logout" class="p-2 text-rose-400 hover:text-rose-300 rounded-lg hover:bg-slate-900" title="Logout">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Frosted Glass Bottom Navigation Bar -->
+  <nav class="bottom-nav fixed bottom-0 left-0 right-0 h-16 bg-slate-900/90 backdrop-blur-xl border-t border-slate-800/80 flex items-center justify-around px-3 z-40 max-w-[430px] mx-auto">
+    <a href="/" class="bottom-nav-link flex flex-col items-center gap-1 ${activePage === 'dashboard' ? 'text-blue-400' : 'text-slate-400'} active:scale-90 transition-all">
+      ${dashIcon}
+      <span class="text-[10px] font-semibold">Home</span>
+    </a>
+    <a href="/expenses" class="bottom-nav-link flex flex-col items-center gap-1 ${activePage === 'expenses' || activePage === 'income' ? 'text-blue-400' : 'text-slate-400'} active:scale-90 transition-all">
+      ${expenseIcon}
+      <span class="text-[10px] font-semibold">Activity</span>
+    </a>
+    <div class="bottom-nav-center-wrap relative -top-4">
+      <button onclick="openQuickAddSheet('expense')" class="bottom-nav-center-btn w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-teal-400 text-white flex items-center justify-center fab-glow active:scale-95 transition-all shadow-lg" aria-label="Quick Add Transaction">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+    <a href="/chat" class="bottom-nav-link flex flex-col items-center gap-1 ${activePage === 'chat' ? 'text-blue-400' : 'text-slate-400'} active:scale-90 transition-all">
+      ${chatIcon}
+      <span class="text-[10px] font-semibold">AI Advisor</span>
+    </a>
+    <a href="/budgets" class="bottom-nav-link flex flex-col items-center gap-1 ${activePage === 'budgets' ? 'text-blue-400' : 'text-slate-400'} active:scale-90 transition-all">
+      ${budgetIcon}
+      <span class="text-[10px] font-semibold">Budgets</span>
+    </a>
   </nav>
 
   <!-- Quick Add Sliding Bottom Sheet -->
-  <div class="sheet-overlay" id="quickAddOverlay" onclick="closeQuickAddSheet()"></div>
-  <div class="bottom-sheet" id="quickAddSheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-header-row">
-      <div class="sheet-type-pills">
-        <button id="qaExpenseBtn" onclick="setQaType('expense')" class="sheet-type-btn active expense">Expense</button>
-        <button id="qaIncomeBtn" onclick="setQaType('income')" class="sheet-type-btn">Income</button>
+  <div id="quickAddOverlay" onclick="closeQuickAddSheet()" class="sheet-overlay fixed inset-0 bg-black/60 backdrop-blur-sm z-50 opacity-0 pointer-events-none transition-opacity duration-300"></div>
+
+  <div id="quickAddSheet" class="bottom-sheet fixed bottom-0 left-0 right-0 max-w-[430px] mx-auto bg-slate-900 border-t border-slate-700/80 rounded-t-[32px] p-4 z-50 transform translate-y-full sheet-transition shadow-2xl flex flex-col max-h-[85vh]">
+    <div class="sheet-handle w-10 h-1 bg-slate-700 rounded-full mx-auto mb-3"></div>
+
+    <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
+      <div class="sheet-type-pills flex items-center gap-2">
+        <button id="qaExpenseBtn" onclick="setQaType('expense')" class="sheet-type-btn px-3 py-1 rounded-full text-xs font-bold bg-rose-500 text-white">Expense</button>
+        <button id="qaIncomeBtn" onclick="setQaType('income')" class="sheet-type-btn px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-400">Income</button>
       </div>
-      <button onclick="closeQuickAddSheet()" class="sheet-close-btn" aria-label="Close">✕</button>
+      <button onclick="closeQuickAddSheet()" class="sheet-close-btn w-7 h-7 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center hover:text-white" aria-label="Close">✕</button>
     </div>
 
-    <div class="qa-display-wrap">
-      <div class="qa-display-label">Amount (SAR)</div>
-      <div class="qa-amount-val">
-        <span style="opacity:0.6;font-size:22px;">SAR</span>
+    <!-- Tactile Big Number Display -->
+    <div class="text-center py-2">
+      <span class="text-xs text-slate-400 block mb-0.5">Enter Amount</span>
+      <div class="text-4xl font-extrabold font-mono text-white tracking-tight flex items-center justify-center">
+        <span class="text-slate-500 text-2xl mr-1">SAR</span>
         <span id="qaDisplay">0.00</span>
       </div>
     </div>
 
     <!-- Quick Category Chips -->
-    <div class="qa-cats-scroll" id="qaCatScroll">
-      <button type="button" onclick="selectQaCat('Food & Dining')" class="qa-cat-chip active">🍔 Food & Dining</button>
-      <button type="button" onclick="selectQaCat('Transport')" class="qa-cat-chip">🚕 Transport</button>
-      <button type="button" onclick="selectQaCat('Shopping')" class="qa-cat-chip">🛍️ Shopping</button>
-      <button type="button" onclick="selectQaCat('Bills')" class="qa-cat-chip">💡 Bills & Utilities</button>
-      <button type="button" onclick="selectQaCat('Groceries')" class="qa-cat-chip">🛒 Groceries</button>
-      <button type="button" onclick="selectQaCat('Entertainment')" class="qa-cat-chip">🍿 Entertainment</button>
-      <button type="button" onclick="selectQaCat('Health')" class="qa-cat-chip">💊 Health</button>
-      <button type="button" onclick="selectQaCat('Other')" class="qa-cat-chip">💳 Other</button>
+    <div class="py-2">
+      <span class="text-[10px] text-slate-400 uppercase font-semibold tracking-wider block mb-1.5">Category</span>
+      <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 text-xs">
+        <button type="button" onclick="selectQaCat('🍔 Food & Dining')" class="qa-cat-chip px-3 py-1.5 rounded-xl bg-blue-600 text-white font-medium flex-shrink-0">🍔 Food</button>
+        <button type="button" onclick="selectQaCat('🚕 Transport')" class="qa-cat-chip px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 font-medium flex-shrink-0">🚕 Transport</button>
+        <button type="button" onclick="selectQaCat('🛍️ Shopping')" class="qa-cat-chip px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 font-medium flex-shrink-0">🛍️ Shopping</button>
+        <button type="button" onclick="selectQaCat('💡 Bills')" class="qa-cat-chip px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 font-medium flex-shrink-0">💡 Bills</button>
+        <button type="button" onclick="selectQaCat('🛒 Groceries')" class="qa-cat-chip px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 font-medium flex-shrink-0">🛒 Groceries</button>
+        <button type="button" onclick="selectQaCat('🍿 Fun')" class="qa-cat-chip px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 font-medium flex-shrink-0">🍿 Fun</button>
+      </div>
     </div>
 
     <!-- Tactile Numpad Grid -->
-    <div class="qa-numpad">
-      <button type="button" onclick="qaNum('1')" class="qa-key">1</button>
-      <button type="button" onclick="qaNum('2')" class="qa-key">2</button>
-      <button type="button" onclick="qaNum('3')" class="qa-key">3</button>
-      <button type="button" onclick="qaNum('4')" class="qa-key">4</button>
-      <button type="button" onclick="qaNum('5')" class="qa-key">5</button>
-      <button type="button" onclick="qaNum('6')" class="qa-key">6</button>
-      <button type="button" onclick="qaNum('7')" class="qa-key">7</button>
-      <button type="button" onclick="qaNum('8')" class="qa-key">8</button>
-      <button type="button" onclick="qaNum('9')" class="qa-key">9</button>
-      <button type="button" onclick="qaNum('.')" class="qa-key">.</button>
-      <button type="button" onclick="qaNum('0')" class="qa-key">0</button>
-      <button type="button" onclick="qaDel()" class="qa-key" aria-label="Backspace">⌫</button>
+    <div class="qa-numpad grid grid-cols-3 gap-2 pt-1 font-mono text-base font-semibold">
+      <button type="button" onclick="qaNum('1')" class="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">1</button>
+      <button type="button" onclick="qaNum('2')" class="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">2</button>
+      <button type="button" onclick="qaNum('3')" class="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">3</button>
+      <button type="button" onclick="qaNum('4')" class="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">4</button>
+      <button type="button" onclick="qaNum('5')" class="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">5</button>
+      <button type="button" onclick="qaNum('6')" class="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">6</button>
+      <button type="button" onclick="qaNum('7')" class="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">7</button>
+      <button type="button" onclick="qaNum('8')" class="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">8</button>
+      <button type="button" onclick="qaNum('9')" class="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">9</button>
+      <button type="button" onclick="qaNum('.')" class="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">.</button>
+      <button type="button" onclick="qaNum('0')" class="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition-all">0</button>
+      <button type="button" onclick="qaDel()" class="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-slate-300 transition-all flex items-center justify-center" aria-label="Backspace">⌫</button>
     </div>
 
-    <button type="button" id="qaSubmitBtn" onclick="qaCommit()" class="qa-submit-btn">
+    <button type="button" id="qaSubmitBtn" onclick="qaCommit()" class="w-full mt-3 py-3 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs tracking-wide shadow-lg active:scale-[0.98] transition-all">
       Save Transaction
     </button>
   </div>
 
-  <!-- Floating Action Button (FAB) Speed Dial -->
-  <div class="fab-container" id="fabContainer">
-    <div class="fab-menu" id="fabMenu">
-      <a href="/expenses" class="fab-item" style="--i:1;">
-        <span class="fab-label">Add Expense</span>
-        <div class="fab-icon danger">${expenseIcon}</div>
-      </a>
-      <a href="/income" class="fab-item" style="--i:2;">
-        <span class="fab-label">Add Income</span>
-        <div class="fab-icon success">${incomeIcon}</div>
-      </a>
-      <a href="/chat" class="fab-item" style="--i:3;">
-        <span class="fab-label">AI Chat</span>
-        <div class="fab-icon primary">${chatIcon}</div>
-      </a>
-    </div>
-    <button class="fab-btn" id="fabMain" onclick="toggleFab()" aria-label="Quick Actions">
-      <svg id="fabIcon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition:transform .25s ease;">
-        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-      </svg>
-    </button>
-  </div>
-
   <script>
-    // Haptic feedback helper (subtle mobile vibrations)
     function haptic(ms = 10) {
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         try { navigator.vibrate(ms); } catch(e) {}
       }
     }
 
-    // Privacy Masking
     function togglePrivacy() {
       haptic(15);
       const isMasked = document.body.classList.toggle('privacy-masked');
-      try {
-        localStorage.setItem('finpulse_privacy', isMasked ? '1' : '0');
-      } catch(e) {}
+      try { localStorage.setItem('finpulse_privacy', isMasked ? '1' : '0'); } catch(e) {}
     }
-    // Initialize privacy from storage
     if (typeof localStorage !== 'undefined' && localStorage.getItem('finpulse_privacy') === '1') {
       document.body.classList.add('privacy-masked');
     }
 
-    // Quick Add Sliding Bottom Sheet
     let _qaType = 'expense';
     let _qaNumStr = '';
     let _qaCategory = 'Food & Dining';
@@ -302,8 +298,9 @@ export function baseLayout({ title, activePage, content, scripts = '', user, fla
       const overlay = document.getElementById('quickAddOverlay');
       const sheet = document.getElementById('quickAddSheet');
       if (overlay && sheet) {
-        overlay.classList.add('active');
-        sheet.classList.add('open');
+        overlay.classList.remove('pointer-events-none');
+        overlay.classList.add('opacity-100');
+        sheet.classList.remove('translate-y-full');
       }
     }
 
@@ -311,8 +308,9 @@ export function baseLayout({ title, activePage, content, scripts = '', user, fla
       const overlay = document.getElementById('quickAddOverlay');
       const sheet = document.getElementById('quickAddSheet');
       if (overlay && sheet) {
-        overlay.classList.remove('active');
-        sheet.classList.remove('open');
+        overlay.classList.add('pointer-events-none');
+        overlay.classList.remove('opacity-100');
+        sheet.classList.add('translate-y-full');
       }
     }
 
@@ -323,23 +321,23 @@ export function baseLayout({ title, activePage, content, scripts = '', user, fla
       const incBtn = document.getElementById('qaIncomeBtn');
       if (expBtn && incBtn) {
         if (type === 'expense') {
-          expBtn.className = 'sheet-type-btn active expense';
-          incBtn.className = 'sheet-type-btn';
+          expBtn.className = 'sheet-type-btn px-3 py-1 rounded-full text-xs font-bold bg-rose-500 text-white';
+          incBtn.className = 'sheet-type-btn px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-400';
         } else {
-          incBtn.className = 'sheet-type-btn active income';
-          expBtn.className = 'sheet-type-btn';
+          incBtn.className = 'sheet-type-btn px-3 py-1 rounded-full text-xs font-bold bg-emerald-500 text-white';
+          expBtn.className = 'sheet-type-btn px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-400';
         }
       }
     }
 
     function selectQaCat(cat) {
       haptic(6);
-      _qaCategory = cat;
+      _qaCategory = cat.replace(/^[^\s]+\s+/, '');
       document.querySelectorAll('.qa-cat-chip').forEach(c => {
-        if (c.textContent.includes(cat)) {
-          c.classList.add('active');
+        if (c.textContent.includes(cat.slice(2))) {
+          c.className = 'qa-cat-chip px-3 py-1.5 rounded-xl bg-blue-600 text-white font-medium flex-shrink-0';
         } else {
-          c.classList.remove('active');
+          c.className = 'qa-cat-chip px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 font-medium flex-shrink-0';
         }
       });
     }
@@ -406,75 +404,13 @@ export function baseLayout({ title, activePage, content, scripts = '', user, fla
       }
     }
 
-    // Sidebar toggle
     function toggleSidebar() {
       const s = document.getElementById('sidebar');
       const o = document.getElementById('sidebarOverlay');
-      const btn = document.getElementById('hamburgerBtn');
-      s.classList.toggle('open');
-      o.classList.toggle('active');
-      if (btn) btn.classList.toggle('active');
-    }
-
-    // FAB toggle
-    function toggleFab() {
-      const c = document.getElementById('fabContainer');
-      const icon = document.getElementById('fabIcon');
-      c.classList.toggle('active');
-      if (icon) {
-        icon.style.transform = c.classList.contains('active') ? 'rotate(45deg)' : 'rotate(0deg)';
+      if (s && o) {
+        s.classList.toggle('open');
+        o.classList.toggle('active');
       }
-    }
-    document.addEventListener('click', e => {
-      const c = document.getElementById('fabContainer');
-      if (c && !c.contains(e.target)) {
-        c.classList.remove('active');
-        const icon = document.getElementById('fabIcon');
-        if (icon) icon.style.transform = 'rotate(0deg)';
-      }
-    });
-
-    // Modal scroll-lock helpers (iOS PWA safe)
-    let _scrollY = 0;
-    function openModal(id) {
-      const modal = document.getElementById(id);
-      if (!modal) return;
-      _scrollY = window.scrollY || window.pageYOffset;
-      document.documentElement.style.setProperty('--scroll-y', '-' + _scrollY + 'px');
-      document.body.classList.add('modal-open');
-      modal.style.display = 'flex';
-      requestAnimationFrame(() => modal.style.opacity = '1');
-    }
-    function closeModal(id) {
-      const modal = document.getElementById(id);
-      if (!modal) return;
-      modal.style.display = 'none';
-      document.body.classList.remove('modal-open');
-      document.documentElement.style.removeProperty('--scroll-y');
-      window.scrollTo(0, _scrollY);
-    }
-    document.addEventListener('click', e => {
-      if (e.target.classList.contains('modal-backdrop')) {
-        closeModal(e.target.id);
-      }
-    });
-    document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') {
-        document.querySelectorAll('.modal-backdrop').forEach(m => closeModal(m.id));
-      }
-    });
-
-    // Auto-dismiss toasts
-    document.querySelectorAll('.toast').forEach(toast => {
-      setTimeout(() => {
-        toast.style.animation = 'toastSlideOut .35s ease forwards';
-        setTimeout(() => toast.remove(), 400);
-      }, 4000);
-    });
-
-    // Service Worker
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/static/sw.js').catch(()=>{});
     }
   </script>
   ${scripts}
@@ -483,7 +419,7 @@ export function baseLayout({ title, activePage, content, scripts = '', user, fla
 }
 
 // ── SVG Icons ─────────────────────────────────────────────────────────────────
-const iconProps = `width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`;
+const iconProps = `class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`;
 export const dashIcon   = `<svg ${iconProps}><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>`;
 export const reportIcon = `<svg ${iconProps}><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`;
 export const chatIcon   = `<svg ${iconProps}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
@@ -495,10 +431,9 @@ export const budgetIcon = `<svg ${iconProps}><path d="M12 2v20M17 5H9.5a3.5 3.5 
 export const loanIcon   = `<svg ${iconProps}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`;
 export const tgIcon     = `<svg ${iconProps}><path d="M21.198 2.433a2.242 2.242 0 0 0-1.022.215l-8.609 3.33c-2.068.8-4.133 1.598-5.724 2.21a405.15 405.15 0 0 1-2.849 1.09c-.42.147-.99.332-1.473.901-.728.9-.168 1.76.323 2.08.207.137.42.263.656.373a8.54 8.54 0 0 0 1.59.5c.482.117.955.237 1.447.4l.394.14a2.73 2.73 0 0 0 .694.093c.5 0 .981-.145 1.434-.424l.012-.008 4.065-2.826a.5.5 0 0 1 .618.776l-3.374 3.19a1.65 1.65 0 0 0-.494 1.183v.038c0 .18.028.355.082.52l.736 2.252a1.74 1.74 0 0 0 1.657 1.198c.496 0 .966-.2 1.308-.556l1.37-1.432 1.978 1.59c.413.33.907.512 1.414.512a2.21 2.21 0 0 0 2.188-1.902l1.726-9.65a2.242 2.242 0 0 0-2.145-2.63z"/></svg>`;
 export const adminIcon  = `<svg ${iconProps}><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 14.93V17a1 1 0 0 1-2 0v-.07A7 7 0 0 1 5.07 11H5a1 1 0 0 1 0-2h.07A7 7 0 0 1 11 3.07V3a1 1 0 0 1 2 0v.07A7 7 0 0 1 18.93 9H19a1 1 0 0 1 0 2h-.07A7 7 0 0 1 13 16.93z"/></svg>`;
-export const settingsIcon = `<svg ${iconProps}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
+export const settingsIcon = `<svg ${iconProps}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
 export const shortcutIcon = `<svg ${iconProps}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`;
 
-// ── HTML escaping ─────────────────────────────────────────────────────────────
 export function esc(str) {
   if (str == null) return '';
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
