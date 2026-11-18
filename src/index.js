@@ -63,9 +63,12 @@ app.route('/', adminRouter);
 app.route('/', settingsRouter);
 
 // ── Root static shortcuts ──────────────────────────────────────────
+app.get('/app', (c) => c.redirect('/static/index.html'));
+app.get('/spa', (c) => c.redirect('/static/index.html'));
 app.get('/manifest.json', (c) => c.redirect('/static/manifest.json'));
 app.get('/sw.js', (c) => c.redirect('/static/sw.js'));
 app.get('/favicon.ico', (c) => c.redirect('/static/icons/icon-192.png'));
+
 
 // ── Shortcut guide ──────────────────────────────────────────────────
 app.get('/shortcut', async (c) => {

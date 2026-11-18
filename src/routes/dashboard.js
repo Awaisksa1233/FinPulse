@@ -78,3 +78,60 @@ dashboardRouter.get('/api/summary', async (c) => {
 
   return c.json({ summary });
 });
+
+// API: Full Dashboard State for SPA
+dashboardRouter.get('/api/dashboard', async (c) => {
+  const session = await getSession(c);
+  if (!session) return c.json({ error: 'Unauthorized' }, 401);
+
+  const d = db(c.env.DB);
+  const user = await d.getUserById(session.userId);
+  if (!user) return c.json({ error: 'User not found' }, 404);
+
+  const salaryDay = user.salary_day || 28;
+  const month = c.req.query('month') || currentBudgetMonth(salaryDay);
+
+  const [accounts, { income, expenses }, recentTransactions, budgets] = await Promise.all([
+    d.getAccounts(user.id),
+    d.getMonthlyTotals(user.id, month),
+    d.getRecentTransactions(user.id, 20),
+    d.getBudgets(user.id),
+  ]);
+
+  const totalBalance = accounts.reduce((s, a) => s + a.balance, 0);
+  const spendMap = await d.getCategorySpend(user.id, month);
+
+  const budgetProgress = budgets.map(b => {
+    const spent = spendMap[b.category] || 0;
+    const pct = b.monthly_limit > 0 ? (spent / b.monthly_limit) : 0;
+    const progress_pct = Math.min(Math.round(pct * 100), 100);
+    const status = pct >= 1 ? 'exceeded' : pct >= (b.alert_threshold || 0.8) ? 'warning' : 'ok';
+    return { ...b, spent, pct, progress_pct, status };
+  });
+
+  // Calculate days remaining to salary day
+  const now = new Date();
+  const currentDay = now.getDate();
+  let daysLeft = salaryDay >= currentDay ? (salaryDay - currentDay) : (30 - currentDay + salaryDay);
+
+  return c.json({
+    success: true,
+    user: { id: user.id, full_name: user.full_name, email: user.email, salary_day: salaryDay },
+    currency: 'SAR',
+    totalBalance,
+    income,
+    expenses,
+    month,
+    salaryCycle: {
+      salaryDay,
+      daysLeft,
+      cycleMonth: month,
+    },
+    accounts,
+    recentTransactions,
+    budgets,
+    budgetProgress,
+    categorySpend: spendMap,
+  });
+});
+

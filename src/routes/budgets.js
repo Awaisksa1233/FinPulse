@@ -32,6 +32,32 @@ budgetsRouter.get('/budgets', async (c) => {
 
 budgetsRouter.get('/budget', (c) => c.redirect('/budgets'));
 
+// API endpoint for budgets
+budgetsRouter.get('/api/budgets', async (c) => {
+  const session = await getSession(c);
+  if (!session) return c.json({ error: 'Unauthorized' }, 401);
+  const user = await db(c.env.DB).getUserById(session.userId);
+  if (!user) return c.json({ error: 'User not found' }, 404);
+
+  const month = c.req.query('month') || currentBudgetMonth(user.salary_day || 28);
+  const d = db(c.env.DB);
+  const [budgets, spendingMap] = await Promise.all([
+    d.getBudgets(user.id),
+    d.getCategorySpend(user.id, month),
+  ]);
+
+  const budgetProgress = budgets.map(b => {
+    const spent = spendingMap[b.category] || 0;
+    const pct = b.monthly_limit > 0 ? (spent / b.monthly_limit) : 0;
+    const progress_pct = Math.min(Math.round(pct * 100), 100);
+    const status = pct >= 1 ? 'exceeded' : pct >= (b.alert_threshold || 0.8) ? 'warning' : 'ok';
+    return { ...b, spent, pct, progress_pct, status };
+  });
+
+  return c.json({ success: true, budgets: budgetProgress, spendingMap, month });
+});
+
+
 const handleCreateBudget = async (c) => {
   const { redirect, session, user } = await requireUser(c);
   if (redirect) return c.redirect(redirect);

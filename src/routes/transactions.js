@@ -45,6 +45,20 @@ transactionsRouter.get('/expense', handleExpense);
 transactionsRouter.get('/expenses', handleExpense);
 transactionsRouter.get('/transactions', (c) => c.redirect('/expenses'));
 
+// API endpoint to get transactions list
+transactionsRouter.get('/api/transactions', async (c) => {
+  const session = await getSession(c);
+  if (!session) return c.json({ error: 'Unauthorized' }, 401);
+  const user = await db(c.env.DB).getUserById(session.userId);
+  if (!user) return c.json({ error: 'User not found' }, 404);
+
+  const type = c.req.query('type') || 'all';
+  const limit = parseInt(c.req.query('limit') || '50');
+  const transactions = await db(c.env.DB).getTransactions(user.id, type, limit);
+  return c.json({ success: true, transactions });
+});
+
+
 const handleAddTransaction = async (c) => {
   const contentType = c.req.header('Content-Type') || '';
   const isJson = contentType.includes('application/json');
