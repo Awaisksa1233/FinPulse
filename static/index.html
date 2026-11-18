@@ -542,14 +542,11 @@
       <!-- Quick Category Chips -->
       <div class="py-2">
         <span class="text-[10px] text-slate-400 uppercase font-semibold tracking-wider block mb-1.5">Category</span>
-        <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 text-xs">
-          <button onclick="selectCategory('🍔 Food & Dining')" class="category-chip px-3 py-1.5 rounded-xl bg-blue-600 text-white font-medium flex-shrink-0">🍔 Food</button>
-          <button onclick="selectCategory('🚕 Transport')" class="category-chip px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 font-medium flex-shrink-0">🚕 Transport</button>
-          <button onclick="selectCategory('🛍️ Shopping')" class="category-chip px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 font-medium flex-shrink-0">🛍️ Shopping</button>
-          <button onclick="selectCategory('💡 Bills')" class="category-chip px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 font-medium flex-shrink-0">💡 Bills</button>
-          <button onclick="selectCategory('🛒 Groceries')" class="category-chip px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 font-medium flex-shrink-0">🛒 Groceries</button>
+        <div id="categoryChipsContainer" class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 text-xs">
+          <!-- Dynamically populated based on Expense vs Income -->
         </div>
       </div>
+
 
       <!-- Tactile Numpad Grid -->
       <div class="grid grid-cols-3 gap-2 pt-1 font-mono text-base font-semibold">
@@ -728,6 +725,27 @@
       sheet.classList.add('translate-y-full');
     }
 
+    const expenseCategories = [
+      { name: 'Food & Dining', emoji: '🍔' },
+      { name: 'Groceries', emoji: '🛒' },
+      { name: 'Transport & Fuel', emoji: '🚕' },
+      { name: 'Shopping', emoji: '🛍️' },
+      { name: 'Bills & Utilities', emoji: '💡' },
+      { name: 'Housing & Rent', emoji: '🏠' },
+      { name: 'Healthcare', emoji: '🏥' },
+      { name: 'Entertainment', emoji: '🍿' }
+    ];
+
+    const incomeCategories = [
+      { name: 'Salary', emoji: '💼' },
+      { name: 'Freelance & Consulting', emoji: '💻' },
+      { name: 'Bonus', emoji: '📈' },
+      { name: 'Business & Sales', emoji: '🏢' },
+      { name: 'Investments', emoji: '🪙' },
+      { name: 'Gift & Reimbursement', emoji: '🎁' },
+      { name: 'Other Income', emoji: '💰' }
+    ];
+
     function setTxType(type) {
       txType = type;
       const expBtn = document.getElementById('typeExpenseBtn');
@@ -739,18 +757,37 @@
         incBtn.className = 'px-3 py-1 rounded-full text-xs font-bold bg-emerald-500 text-white';
         expBtn.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-400';
       }
+
+      // Render distinct categories
+      renderCategoryChips();
+    }
+
+    function renderCategoryChips() {
+      const container = document.getElementById('categoryChipsContainer');
+      const cats = txType === 'expense' ? expenseCategories : incomeCategories;
+      
+      // Reset selected category to first in list if not already matching
+      if (!selectedCat || !cats.some(c => `${c.emoji} ${c.name}` === selectedCat)) {
+        selectedCat = `${cats[0].emoji} ${cats[0].name}`;
+      }
+
+      container.innerHTML = cats.map(c => {
+        const fullCat = `${c.emoji} ${c.name}`;
+        const isSelected = selectedCat === fullCat;
+        const activeClass = txType === 'expense' ? 'bg-blue-600 text-white font-bold' : 'bg-emerald-600 text-white font-bold';
+        return `
+          <button onclick="selectCategory('${fullCat}')" class="category-chip px-3 py-1.5 rounded-xl ${isSelected ? activeClass : 'bg-slate-800 text-slate-300 font-medium'} flex-shrink-0 transition">
+            ${c.emoji} ${c.name}
+          </button>
+        `;
+      }).join('');
     }
 
     function selectCategory(cat) {
       selectedCat = cat;
-      document.querySelectorAll('.category-chip').forEach(btn => {
-        if (btn.innerText.includes(cat.slice(2, 6))) {
-          btn.className = 'category-chip px-3 py-1.5 rounded-xl bg-blue-600 text-white font-medium flex-shrink-0';
-        } else {
-          btn.className = 'category-chip px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 font-medium flex-shrink-0';
-        }
-      });
+      renderCategoryChips();
     }
+
 
     function appendNum(char) {
       if (char === '.' && numStr.includes('.')) return;

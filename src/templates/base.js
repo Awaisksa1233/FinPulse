@@ -128,13 +128,14 @@ export function baseLayout({ title = 'FinPulse', activePage = 'dashboard', conte
 
         <div class="py-2">
           <span class="text-[10px] text-slate-400 uppercase font-semibold tracking-wider block mb-1.5">Category</span>
-          <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
+          <div id="qaCategoryContainer" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
             <button type="button" onclick="setQaCat('Food & Dining')" class="qa-cat-chip px-3 py-1.5 rounded-xl bg-blue-600 text-white font-medium flex-shrink-0">🍔 Food</button>
             <button type="button" onclick="setQaCat('Transport')" class="qa-cat-chip px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 font-medium flex-shrink-0">🚕 Transport</button>
             <button type="button" onclick="setQaCat('Shopping')" class="qa-cat-chip px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 font-medium flex-shrink-0">🛍️ Shopping</button>
             <button type="button" onclick="setQaCat('Bills & Utilities')" class="qa-cat-chip px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 font-medium flex-shrink-0">💡 Bills</button>
           </div>
         </div>
+
 
         <div class="qa-numpad grid grid-cols-3 gap-2 pt-1 font-mono text-base font-semibold">
           <button type="button" onclick="qaNum('1')" class="py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 active:scale-95 text-white transition">1</button>
@@ -189,6 +190,26 @@ export function baseLayout({ title = 'FinPulse', activePage = 'dashboard', conte
       s.classList.add('translate-y-full');
     }
 
+    const qaExpenseCats = [
+      { name: 'Food & Dining', emoji: '🍔' },
+      { name: 'Groceries', emoji: '🛒' },
+      { name: 'Transport', emoji: '🚕' },
+      { name: 'Shopping', emoji: '🛍️' },
+      { name: 'Bills & Utilities', emoji: '💡' },
+      { name: 'Healthcare', emoji: '🏥' },
+      { name: 'Entertainment', emoji: '🍿' }
+    ];
+
+    const qaIncomeCats = [
+      { name: 'Salary', emoji: '💼' },
+      { name: 'Consulting', emoji: '💻' },
+      { name: 'Bonus', emoji: '📈' },
+      { name: 'Business', emoji: '🏢' },
+      { name: 'Investments', emoji: '🪙' },
+      { name: 'Gift', emoji: '🎁' },
+      { name: 'Other Income', emoji: '💰' }
+    ];
+
     function setQaType(t) {
       qaTypeVal = t;
       document.getElementById('qaInputType').value = t;
@@ -201,19 +222,33 @@ export function baseLayout({ title = 'FinPulse', activePage = 'dashboard', conte
         ib.className = 'px-3 py-1 rounded-full text-xs font-bold bg-emerald-500 text-white';
         eb.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-400';
       }
+      renderQaCategoryChips();
     }
+
+    function renderQaCategoryChips() {
+      const container = document.getElementById('qaCategoryContainer');
+      if (!container) return;
+      const cats = qaTypeVal === 'expense' ? qaExpenseCats : qaIncomeCats;
+
+      if (!qaCategoryVal || !cats.some(c => c.name === qaCategoryVal)) {
+        qaCategoryVal = cats[0].name;
+        document.getElementById('qaInputCategory').value = qaCategoryVal;
+      }
+
+      container.innerHTML = cats.map(c => {
+        const isSelected = qaCategoryVal === c.name;
+        const activeCls = qaTypeVal === 'expense' ? 'bg-blue-600 text-white font-bold' : 'bg-emerald-600 text-white font-bold';
+        return '<button type="button" onclick="setQaCat(\'' + c.name + '\')" class="qa-cat-chip px-3 py-1.5 rounded-xl ' + (isSelected ? activeCls : 'bg-slate-800 text-slate-300 font-medium') + ' flex-shrink-0 transition">' + c.emoji + ' ' + c.name + '</button>';
+      }).join('');
+    }
+
 
     function setQaCat(cat) {
       qaCategoryVal = cat;
       document.getElementById('qaInputCategory').value = cat;
-      document.querySelectorAll('.qa-cat-chip').forEach(btn => {
-        if (btn.innerText.includes(cat.slice(0, 4))) {
-          btn.className = 'qa-cat-chip px-3 py-1.5 rounded-xl bg-blue-600 text-white font-medium flex-shrink-0';
-        } else {
-          btn.className = 'qa-cat-chip px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 font-medium flex-shrink-0';
-        }
-      });
+      renderQaCategoryChips();
     }
+
 
     function qaNum(c) {
       if (c === '.' && qaAmount.includes('.')) return;
