@@ -73,18 +73,29 @@ export function baseLayout({ title, activePage, content, scripts = '', user, fla
     `).join('')}
   `).join('');
 
-  const bottomNav = [
-    { href: '/', icon: dashIcon, label: 'Home', page: 'dashboard' },
-    { href: '/expenses', icon: expenseIcon, label: 'Expenses', page: 'expenses' },
-    { href: '/chat', icon: chatIcon, label: 'AI', page: 'chat' },
-    { href: '/accounts', icon: accountIcon, label: 'Accounts', page: 'accounts' },
-    { href: '/reports', icon: reportIcon, label: 'Reports', page: 'reports' },
-  ].map(n => `
-    <a href="${n.href}" class="bottom-nav-link ${activePage === n.page ? 'active' : ''}">
-      ${n.icon}
-      <span>${n.label}</span>
+  const bottomNavHtml = `
+    <a href="/" class="bottom-nav-link ${activePage === 'dashboard' ? 'active' : ''}">
+      ${dashIcon}
+      <span>Home</span>
     </a>
-  `).join('');
+    <a href="/expenses" class="bottom-nav-link ${activePage === 'expenses' || activePage === 'income' ? 'active' : ''}">
+      ${expenseIcon}
+      <span>Activity</span>
+    </a>
+    <div class="bottom-nav-center-wrap">
+      <button class="bottom-nav-center-btn" onclick="openQuickAddSheet('expense')" aria-label="Quick Add Transaction">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+    <a href="/chat" class="bottom-nav-link ${activePage === 'chat' ? 'active' : ''}">
+      ${chatIcon}
+      <span>AI Advisor</span>
+    </a>
+    <a href="/budgets" class="bottom-nav-link ${activePage === 'budgets' ? 'active' : ''}">
+      ${budgetIcon}
+      <span>Budgets</span>
+    </a>
+  `;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -122,7 +133,10 @@ export function baseLayout({ title, activePage, content, scripts = '', user, fla
       <span class="mobile-logo-text">FinPulse</span>
     </div>
     <div style="display:flex;align-items:center;gap:6px;">
-      <a href="/chat" style="color:var(--sidebar-text);padding:8px;display:flex;align-items:center;" title="AI Assistant">
+      <button class="mobile-header-btn" onclick="togglePrivacy()" title="Toggle Privacy Mode" aria-label="Toggle Privacy">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+      <a href="/chat" class="mobile-header-btn" title="AI Assistant">
         ${chatIcon}
       </a>
       <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Toggle navigation">
@@ -174,9 +188,62 @@ export function baseLayout({ title, activePage, content, scripts = '', user, fla
   <!-- Bottom Nav (mobile) -->
   <nav class="bottom-nav">
     <div class="bottom-nav-items">
-      ${bottomNav}
+      ${bottomNavHtml}
     </div>
   </nav>
+
+  <!-- Quick Add Sliding Bottom Sheet -->
+  <div class="sheet-overlay" id="quickAddOverlay" onclick="closeQuickAddSheet()"></div>
+  <div class="bottom-sheet" id="quickAddSheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header-row">
+      <div class="sheet-type-pills">
+        <button id="qaExpenseBtn" onclick="setQaType('expense')" class="sheet-type-btn active expense">Expense</button>
+        <button id="qaIncomeBtn" onclick="setQaType('income')" class="sheet-type-btn">Income</button>
+      </div>
+      <button onclick="closeQuickAddSheet()" class="sheet-close-btn" aria-label="Close">✕</button>
+    </div>
+
+    <div class="qa-display-wrap">
+      <div class="qa-display-label">Amount (SAR)</div>
+      <div class="qa-amount-val">
+        <span style="opacity:0.6;font-size:22px;">SAR</span>
+        <span id="qaDisplay">0.00</span>
+      </div>
+    </div>
+
+    <!-- Quick Category Chips -->
+    <div class="qa-cats-scroll" id="qaCatScroll">
+      <button type="button" onclick="selectQaCat('Food & Dining')" class="qa-cat-chip active">🍔 Food & Dining</button>
+      <button type="button" onclick="selectQaCat('Transport')" class="qa-cat-chip">🚕 Transport</button>
+      <button type="button" onclick="selectQaCat('Shopping')" class="qa-cat-chip">🛍️ Shopping</button>
+      <button type="button" onclick="selectQaCat('Bills')" class="qa-cat-chip">💡 Bills & Utilities</button>
+      <button type="button" onclick="selectQaCat('Groceries')" class="qa-cat-chip">🛒 Groceries</button>
+      <button type="button" onclick="selectQaCat('Entertainment')" class="qa-cat-chip">🍿 Entertainment</button>
+      <button type="button" onclick="selectQaCat('Health')" class="qa-cat-chip">💊 Health</button>
+      <button type="button" onclick="selectQaCat('Other')" class="qa-cat-chip">💳 Other</button>
+    </div>
+
+    <!-- Tactile Numpad Grid -->
+    <div class="qa-numpad">
+      <button type="button" onclick="qaNum('1')" class="qa-key">1</button>
+      <button type="button" onclick="qaNum('2')" class="qa-key">2</button>
+      <button type="button" onclick="qaNum('3')" class="qa-key">3</button>
+      <button type="button" onclick="qaNum('4')" class="qa-key">4</button>
+      <button type="button" onclick="qaNum('5')" class="qa-key">5</button>
+      <button type="button" onclick="qaNum('6')" class="qa-key">6</button>
+      <button type="button" onclick="qaNum('7')" class="qa-key">7</button>
+      <button type="button" onclick="qaNum('8')" class="qa-key">8</button>
+      <button type="button" onclick="qaNum('9')" class="qa-key">9</button>
+      <button type="button" onclick="qaNum('.')" class="qa-key">.</button>
+      <button type="button" onclick="qaNum('0')" class="qa-key">0</button>
+      <button type="button" onclick="qaDel()" class="qa-key" aria-label="Backspace">⌫</button>
+    </div>
+
+    <button type="button" id="qaSubmitBtn" onclick="qaCommit()" class="qa-submit-btn">
+      Save Transaction
+    </button>
+  </div>
 
   <!-- Floating Action Button (FAB) Speed Dial -->
   <div class="fab-container" id="fabContainer">
@@ -202,6 +269,143 @@ export function baseLayout({ title, activePage, content, scripts = '', user, fla
   </div>
 
   <script>
+    // Haptic feedback helper (subtle mobile vibrations)
+    function haptic(ms = 10) {
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try { navigator.vibrate(ms); } catch(e) {}
+      }
+    }
+
+    // Privacy Masking
+    function togglePrivacy() {
+      haptic(15);
+      const isMasked = document.body.classList.toggle('privacy-masked');
+      try {
+        localStorage.setItem('finpulse_privacy', isMasked ? '1' : '0');
+      } catch(e) {}
+    }
+    // Initialize privacy from storage
+    if (typeof localStorage !== 'undefined' && localStorage.getItem('finpulse_privacy') === '1') {
+      document.body.classList.add('privacy-masked');
+    }
+
+    // Quick Add Sliding Bottom Sheet
+    let _qaType = 'expense';
+    let _qaNumStr = '';
+    let _qaCategory = 'Food & Dining';
+
+    function openQuickAddSheet(type = 'expense') {
+      haptic(12);
+      setQaType(type);
+      _qaNumStr = '';
+      _updateQaDisplay();
+      const overlay = document.getElementById('quickAddOverlay');
+      const sheet = document.getElementById('quickAddSheet');
+      if (overlay && sheet) {
+        overlay.classList.add('active');
+        sheet.classList.add('open');
+      }
+    }
+
+    function closeQuickAddSheet() {
+      const overlay = document.getElementById('quickAddOverlay');
+      const sheet = document.getElementById('quickAddSheet');
+      if (overlay && sheet) {
+        overlay.classList.remove('active');
+        sheet.classList.remove('open');
+      }
+    }
+
+    function setQaType(type) {
+      haptic(8);
+      _qaType = type;
+      const expBtn = document.getElementById('qaExpenseBtn');
+      const incBtn = document.getElementById('qaIncomeBtn');
+      if (expBtn && incBtn) {
+        if (type === 'expense') {
+          expBtn.className = 'sheet-type-btn active expense';
+          incBtn.className = 'sheet-type-btn';
+        } else {
+          incBtn.className = 'sheet-type-btn active income';
+          expBtn.className = 'sheet-type-btn';
+        }
+      }
+    }
+
+    function selectQaCat(cat) {
+      haptic(6);
+      _qaCategory = cat;
+      document.querySelectorAll('.qa-cat-chip').forEach(c => {
+        if (c.textContent.includes(cat)) {
+          c.classList.add('active');
+        } else {
+          c.classList.remove('active');
+        }
+      });
+    }
+
+    function qaNum(char) {
+      haptic(8);
+      if (char === '.' && _qaNumStr.includes('.')) return;
+      if (_qaNumStr.length >= 8) return;
+      _qaNumStr += char;
+      _updateQaDisplay();
+    }
+
+    function qaDel() {
+      haptic(8);
+      _qaNumStr = _qaNumStr.slice(0, -1);
+      _updateQaDisplay();
+    }
+
+    function _updateQaDisplay() {
+      const el = document.getElementById('qaDisplay');
+      if (el) el.textContent = _qaNumStr || '0.00';
+    }
+
+    async function qaCommit() {
+      haptic(15);
+      const val = parseFloat(_qaNumStr);
+      if (!val || isNaN(val) || val <= 0) {
+        alert('Please enter a valid amount.');
+        return;
+      }
+      const btn = document.getElementById('qaSubmitBtn');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+      }
+      try {
+        const res = await fetch('/api/transaction', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: _qaType,
+            amount: val,
+            category: _qaCategory,
+            date: new Date().toISOString().split('T')[0]
+          })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          closeQuickAddSheet();
+          window.location.reload();
+        } else {
+          alert(data.error || 'Failed to save transaction');
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Save Transaction';
+          }
+        }
+      } catch (err) {
+        alert('Error saving transaction: ' + err.message);
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Save Transaction';
+        }
+      }
+    }
+
     // Sidebar toggle
     function toggleSidebar() {
       const s = document.getElementById('sidebar');
