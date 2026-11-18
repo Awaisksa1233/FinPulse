@@ -51,4 +51,5 @@ share/python-wheels/
 .wrangler/
 .mf/
 coverage/
+.venv/
 
